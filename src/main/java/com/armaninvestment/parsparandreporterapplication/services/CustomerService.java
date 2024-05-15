@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.CustomerDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.exceptions.DatabaseIntegrityViolationException;
 import com.armaninvestment.parsparandreporterapplication.mappers.CustomerMapper;
@@ -40,6 +41,14 @@ public class CustomerService {
         Specification<Customer> specification = CustomerSpecification.bySearchCriteria(search);
         return customerRepository.findAll(specification, pageRequest)
                 .map(customerMapper::toDto);
+    }
+    public List<CustomerSelect> findAllCustomerSelect(String searchParam) {
+        Specification<Customer> specification = CustomerSpecification.getSelectSpecification(searchParam);
+        return customerRepository
+                .findAll(specification)
+                .stream()
+                .map(customerMapper::toSelectDto)
+                .collect(Collectors.toList());
     }
     public CustomerDto getCustomerById(Long id) {
         var customerEntity = customerRepository.findById(id).orElseThrow();

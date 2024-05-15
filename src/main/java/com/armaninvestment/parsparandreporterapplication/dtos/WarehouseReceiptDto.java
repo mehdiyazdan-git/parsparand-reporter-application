@@ -25,6 +25,8 @@ public class WarehouseReceiptDto implements Serializable {
     private String warehouseReceiptDescription;
     private Long warehouseReceiptNumber;
     private Long customerId;
+    private String customerName;
     private Long yearId;
+    private Long yearName;
     private Set<WarehouseReceiptItemDto> warehouseReceiptItems = new LinkedHashSet<>();
 }

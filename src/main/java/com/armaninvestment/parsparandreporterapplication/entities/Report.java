@@ -26,6 +26,12 @@ public class Report{
     @Column(name = "report_explanation")
     private String reportExplanation;
 
+    @Column(name = "jalali_year")
+    private Integer jalaliYear;
+
+    @Column(name = "month")
+    private Integer month;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "year_id")
     private Year year;

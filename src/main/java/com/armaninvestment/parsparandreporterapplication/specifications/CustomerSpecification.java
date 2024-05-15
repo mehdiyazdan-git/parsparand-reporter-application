@@ -45,4 +45,14 @@ public class CustomerSpecification {
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
     }
+    public static Specification<Customer> getSelectSpecification(String searchParam){
+        return (root, query, cb) -> {
+            Predicate predicate = cb.conjunction();
+            if (searchParam !=null && !searchParam.isEmpty()) {
+                predicate =(cb.like(root.get("name"), "%" + searchParam.trim() + "%"));
+            }
+            return predicate;
+        };
+
+    }
 }

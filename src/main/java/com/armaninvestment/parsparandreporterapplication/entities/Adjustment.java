@@ -41,4 +41,10 @@ public class Adjustment{
     @Column(name = "adjustment_number")
     private Long adjustmentNumber;
 
+    @Column(name = "jalali_year")
+    private Integer jalaliYear;
+
+    @Column(name = "month")
+    private Integer month;
+
 }

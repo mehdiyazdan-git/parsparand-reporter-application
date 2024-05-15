@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 @Service
 @RequiredArgsConstructor
 public class AdjustmentService {
@@ -42,33 +41,41 @@ public class AdjustmentService {
     }
 
     public AdjustmentDto getAdjustmentById(Long id) {
-        var adjustmentEntity = adjustmentRepository.findById(id).orElseThrow();
+        var adjustmentEntity = adjustmentRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("الحاقیه با این شناسه یافت نشد."));
         return adjustmentMapper.toDto(adjustmentEntity);
     }
 
     public AdjustmentDto updateAdjustment(Long id, AdjustmentDto adjustmentDto) {
-        var adjustmentEntity = adjustmentRepository.findById(id).orElseThrow();
-        Adjustment partialedUpdate = adjustmentMapper.partialUpdate(adjustmentDto, adjustmentEntity);
-        var updatedAdjustment = adjustmentRepository.save(partialedUpdate);
+        var existingAdjustment = adjustmentRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("الحاقیه با این شناسه یافت نشد."));
+
+        adjustmentMapper.partialUpdate(adjustmentDto, existingAdjustment);
+        var updatedAdjustment = adjustmentRepository.save(existingAdjustment);
         return adjustmentMapper.toDto(updatedAdjustment);
     }
 
     public void deleteAdjustment(Long id) {
+        if (!adjustmentRepository.existsById(id)) {
+            throw new IllegalStateException("الحاقیه با این شناسه یافت نشد.");
+        }
         adjustmentRepository.deleteById(id);
     }
 
     public String importAdjustmentsFromExcel(MultipartFile file) throws IOException {
         List<AdjustmentDto> adjustmentDtos = ExcelDataImporter.importData(file, AdjustmentDto.class);
-        List<Adjustment> adjustments = adjustmentDtos.stream().map(adjustmentMapper::toEntity).collect(Collectors.toList());
+        List<Adjustment> adjustments = adjustmentDtos.stream()
+                .map(adjustmentMapper::toEntity)
+                .collect(Collectors.toList());
+
         adjustmentRepository.saveAll(adjustments);
-        return adjustments.size() + " adjustments have been imported successfully.";
+        return adjustments.size() + " الحاقیه با موفقیت وارد شدند.";
     }
 
     public byte[] exportAdjustmentsToExcel() throws IOException {
-        List<AdjustmentDto> adjustmentDtos = adjustmentRepository.findAll().stream().map(adjustmentMapper::toDto)
+        List<AdjustmentDto> adjustmentDtos = adjustmentRepository.findAll().stream()
+                .map(adjustmentMapper::toDto)
                 .collect(Collectors.toList());
         return ExcelDataExporter.exportData(adjustmentDtos, AdjustmentDto.class);
     }
-
-
 }

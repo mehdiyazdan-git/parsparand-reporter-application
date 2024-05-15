@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.mappers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Product;
 import org.mapstruct.*;
 
@@ -9,6 +10,8 @@ public interface ProductMapper {
     Product toEntity(ProductDto productDto);
 
     ProductDto toDto(Product product);
+    @Mapping(target = "name",source = "productName")
+    ProductSelectDto toSelectDto(Product product);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     Product partialUpdate(ProductDto productDto, @MappingTarget Product product);

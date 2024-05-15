@@ -39,4 +39,10 @@ public class Payment{
     @Column(name = "payment_subject")
     private String paymentSubject;
 
+    @Column(name = "jalali_year")
+    private Integer jalaliYear;
+
+    @Column(name = "month")
+    private Integer month;
+
 }

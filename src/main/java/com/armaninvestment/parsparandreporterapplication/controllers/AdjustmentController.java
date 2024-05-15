@@ -17,7 +17,7 @@ import java.io.IOException;
 public class AdjustmentController {
     private final AdjustmentService adjustmentService;
 
-    @GetMapping(path = {"/adjustments", ""})
+    @GetMapping
     public ResponseEntity<Page<AdjustmentDto>> getAllAdjustmentsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
@@ -28,25 +28,27 @@ public class AdjustmentController {
         return ResponseEntity.ok(adjustments);
     }
 
-    @GetMapping(path = {"/{id}"})
-    public ResponseEntity<AdjustmentDto> getAdjustmentById(@PathVariable Long id){
+    @GetMapping("/{id}")
+    public ResponseEntity<AdjustmentDto> getAdjustmentById(@PathVariable Long id) {
         return ResponseEntity.ok(adjustmentService.getAdjustmentById(id));
     }
-    @PostMapping(path = {"/",""})
-    public ResponseEntity<AdjustmentDto> createAdjustment(@RequestBody AdjustmentDto adjustmentDto){
-        return ResponseEntity.ok(adjustmentService.createAdjustment(adjustmentDto));
+
+    @PostMapping
+    public ResponseEntity<AdjustmentDto> createAdjustment(@RequestBody AdjustmentDto adjustmentDto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(adjustmentService.createAdjustment(adjustmentDto));
     }
 
-    @PutMapping(path = {"/{id}"})
-    public ResponseEntity<AdjustmentDto> updateAdjustment(@PathVariable Long id, @RequestBody AdjustmentDto adjustmentDto){
+    @PutMapping("/{id}")
+    public ResponseEntity<AdjustmentDto> updateAdjustment(@PathVariable Long id, @RequestBody AdjustmentDto adjustmentDto) {
         return ResponseEntity.ok(adjustmentService.updateAdjustment(id, adjustmentDto));
     }
 
-    @DeleteMapping(path = {"/{id}"})
-    public ResponseEntity<Void> deleteAdjustment(@PathVariable Long id){
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAdjustment(@PathVariable Long id) {
         adjustmentService.deleteAdjustment(id);
         return ResponseEntity.noContent().build();
     }
+
     @GetMapping("/download-all-adjustments.xlsx")
     public ResponseEntity<byte[]> downloadAllAdjustmentsExcel() throws IOException {
         byte[] excelData = adjustmentService.exportAdjustmentsToExcel();
@@ -59,20 +61,16 @@ public class AdjustmentController {
     }
 
     @PostMapping("/import")
-    public ResponseEntity<?> importAdjustmentsFromExcel(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> importAdjustmentsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
-            String list = adjustmentService.importAdjustmentsFromExcel(file);
-            return ResponseEntity.ok(list);
+            String result = adjustmentService.importAdjustmentsFromExcel(file);
+            return ResponseEntity.ok(result);
         } catch (IOException e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import adjustments from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }
     }
-
-
 }

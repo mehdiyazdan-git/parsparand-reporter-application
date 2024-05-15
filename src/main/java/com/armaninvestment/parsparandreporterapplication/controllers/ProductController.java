@@ -1,6 +1,8 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
+import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
@@ -26,6 +30,12 @@ public class ProductController {
             ProductSearch search) {
         Page<ProductDto> products = productService.findProductByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(products);
+    }
+    @GetMapping(path = "/select")
+    public ResponseEntity<List<ProductSelectDto>> findAllProductSelect(
+            @RequestParam(required = false) String searchQuery) {
+        List<ProductSelectDto> productSelects = productService.findAllProductSelect(searchQuery);
+        return ResponseEntity.ok(productSelects);
     }
 
     @GetMapping(path = {"/{id}"})

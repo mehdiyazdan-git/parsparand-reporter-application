@@ -1,5 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.entities;
 
+import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
+import com.armaninvestment.parsparandreporterapplication.enums.ProductTypeConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,7 +15,7 @@ import java.util.Set;
 @Setter
 @Entity
 @Table(name = "product")
-public class Product{
+public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -32,6 +34,10 @@ public class Product{
     @Column(name = "product_name")
     private String productName;
 
+    @Convert(converter = ProductTypeConverter.class)
+    @Column(name = "product_type", nullable = false)
+    private ProductType productType;
+
     @OneToMany(mappedBy = "product")
     private Set<ContractItem> contractItems = new LinkedHashSet<>();
 
@@ -40,5 +46,4 @@ public class Product{
 
     @OneToMany(mappedBy = "product")
     private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
-
 }

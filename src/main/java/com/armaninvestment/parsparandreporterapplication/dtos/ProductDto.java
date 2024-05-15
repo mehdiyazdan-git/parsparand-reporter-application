@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.dtos;
 
+import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -25,4 +26,6 @@ public class ProductDto implements Serializable {
     private String productCode;
     @Size(max = 255)
     private String productName;
+    @NotNull
+    private ProductType productType;
 }

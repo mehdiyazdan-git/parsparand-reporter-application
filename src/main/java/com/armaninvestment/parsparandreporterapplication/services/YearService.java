@@ -41,6 +41,14 @@ public class YearService {
         return yearRepository.findAll(specification, pageRequest)
                 .map(yearMapper::toDto);
     }
+    public List<YearDto> yearSelect(YearSearch searchParam) {
+        Specification<Year> specification = YearSpecification.bySearchCriteria(searchParam);
+        return yearRepository
+                .findAll(specification)
+                .stream()
+                .map(yearMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
     public YearDto createYear(YearDto yearDto) {
         var yearEntity = yearMapper.toEntity(yearDto);

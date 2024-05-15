@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/years")
 @RequiredArgsConstructor
@@ -26,6 +27,19 @@ public class YearController {
             YearSearch search) {
         Page<YearDto> years = yearService.findYearByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(years);
+    }
+    @GetMapping(path = "/select")
+    public ResponseEntity<?> yearSelect(@RequestParam(required = false) String searchQuery) {
+        YearSearch yearSearch = new YearSearch();
+        if (searchQuery != null) {
+            try {
+                Long name = Long.parseLong(searchQuery);
+                yearSearch.setName(name);
+            } catch (NumberFormatException e) {
+               return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(yearService.yearSelect(yearSearch));
     }
 
     @GetMapping(path = {"/{id}"})

@@ -37,6 +37,12 @@ public class WarehouseReceipt{
     @JoinColumn(name = "year_id")
     private Year year;
 
+    @Column(name = "jalali_year")
+    private Integer jalaliYear;
+
+    @Column(name = "month")
+    private Integer month;
+
     @OneToMany(mappedBy = "warehouseReceipt")
     private Set<InvoiceItem> invoiceItems = new LinkedHashSet<>();
 

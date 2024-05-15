@@ -39,7 +39,8 @@ public class ContractService {
     }
 
     public ContractDto getContractById(Long id) {
-        var contractEntity = contractRepository.findById(id).orElseThrow();
+        var contractEntity = contractRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("قرارداد با شناسه " + id + " پیدا نشد."));
         return contractMapper.toDto(contractEntity);
     }
 
@@ -52,38 +53,41 @@ public class ContractService {
         return contractMapper.toDto(savedContract);
     }
 
-
     public ContractDto updateContract(Long id, ContractDto contractDto) {
-        var existingContract = contractRepository.findById(id).orElseThrow(() -> new IllegalStateException("قرارداد پیدا نشد."));
+        var existingContract = contractRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("قرارداد با شناسه " + id + " پیدا نشد."));
 
         if (contractRepository.existsByContractNumberAndIdNot(contractDto.getContractNumber(), id)) {
             throw new IllegalStateException("یک قرارداد دیگر با همین شماره قرارداد وجود دارد.");
         }
-        Contract partialUpdate = contractMapper.partialUpdate(contractDto, existingContract);
-        var updatedContract = contractRepository.save(partialUpdate);
+
+        contractMapper.partialUpdate(contractDto, existingContract);
+        var updatedContract = contractRepository.save(existingContract);
         return contractMapper.toDto(updatedContract);
     }
 
-
     public void deleteContract(Long id) {
         if (!contractRepository.existsById(id)) {
-            throw new EntityNotFoundException("قراردادی با شناسه " + id + "یافت نشد.");
+            throw new EntityNotFoundException("قرارداد با شناسه " + id + " پیدا نشد.");
         }
         if (invoiceRepository.existsByCustomerId(id)) {
-            throw new DatabaseIntegrityViolationException("امکان حذف مشتری وجود ندارد چون فاکتورهای مرتبط دارد.");
+            throw new DatabaseIntegrityViolationException("امکان حذف قرارداد وجود ندارد چون فاکتورهای مرتبط دارد.");
         }
         contractRepository.deleteById(id);
     }
 
     public String importContractsFromExcel(MultipartFile file) throws IOException {
         List<ContractDto> contractDtos = ExcelDataImporter.importData(file, ContractDto.class);
-        List<Contract> contracts = contractDtos.stream().map(contractMapper::toEntity).collect(Collectors.toList());
+        List<Contract> contracts = contractDtos.stream()
+                .map(contractMapper::toEntity)
+                .collect(Collectors.toList());
         contractRepository.saveAll(contracts);
         return contracts.size() + " قرارداد با موفقیت وارد شد.";
     }
 
     public byte[] exportContractsToExcel() throws IOException {
-        List<ContractDto> contractDtos = contractRepository.findAll().stream().map(contractMapper::toDto)
+        List<ContractDto> contractDtos = contractRepository.findAll().stream()
+                .map(contractMapper::toDto)
                 .collect(Collectors.toList());
         return ExcelDataExporter.exportData(contractDtos, ContractDto.class);
     }

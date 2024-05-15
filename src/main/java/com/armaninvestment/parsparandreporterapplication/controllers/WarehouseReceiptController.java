@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-
+@CrossOrigin
 @RestController
 @RequestMapping("/api/warehouse-receipts")
 @RequiredArgsConstructor
 public class WarehouseReceiptController {
     private final WarehouseReceiptService warehouseReceiptService;
 
-    @GetMapping(path = {"/warehouse-receipts", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<WarehouseReceiptDto>> getAllWarehouseReceiptsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
@@ -35,7 +35,12 @@ public class WarehouseReceiptController {
 
     @PostMapping(path = {"/", ""})
     public ResponseEntity<WarehouseReceiptDto> createWarehouseReceipt(@RequestBody WarehouseReceiptDto warehouseReceiptDto){
-        return ResponseEntity.ok(warehouseReceiptService.createWarehouseReceipt(warehouseReceiptDto));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(warehouseReceiptService.createWarehouseReceipt(warehouseReceiptDto));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
     @PutMapping(path = {"/{id}"})

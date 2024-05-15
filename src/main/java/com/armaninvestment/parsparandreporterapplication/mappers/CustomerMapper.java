@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.mappers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.CustomerDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import org.mapstruct.*;
 
@@ -9,6 +10,8 @@ public interface CustomerMapper {
     Customer toEntity(CustomerDto customerDto);
 
     CustomerDto toDto(Customer customer);
+
+    CustomerSelect toSelectDto(Customer customer);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     Customer partialUpdate(CustomerDto customerDto, @MappingTarget Customer customer);

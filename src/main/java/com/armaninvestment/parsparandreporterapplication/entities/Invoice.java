@@ -63,4 +63,10 @@ public class Invoice{
     @OneToMany(mappedBy = "invoice")
     private Set<InvoiceItem> invoiceItems = new LinkedHashSet<>();
 
+    @Column(name = "jalali_year")
+    private Integer jalaliYear;
+
+    @Column(name = "month")
+    private Integer month;
+
 }

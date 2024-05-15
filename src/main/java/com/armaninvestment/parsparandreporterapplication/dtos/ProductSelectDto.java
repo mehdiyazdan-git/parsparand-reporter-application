@@ -1,6 +1,7 @@
-package com.armaninvestment.parsparandreporterapplication.searchForms;
+package com.armaninvestment.parsparandreporterapplication.dtos;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,10 +15,8 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class ProductSearch implements Serializable {
+public class ProductSelectDto implements Serializable {
     private Long id;
-    private String productCode;
-    private String productName;
-    private String measurementIndex;
-    private String productTypeCaption;
+    @Size(max = 255)
+    private String name;
 }

@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.CustomerDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.searchForms.CustomerSearch;
 import com.armaninvestment.parsparandreporterapplication.services.CustomerService;
 import lombok.RequiredArgsConstructor;
@@ -10,14 +11,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/customers")
 @RequiredArgsConstructor
 public class CustomerController {
     private final CustomerService customerService;
 
-    @GetMapping(path = {"/customers", ""})
+    @GetMapping(path = {"/customers", "/customers/"})
     public ResponseEntity<Page<CustomerDto>> getAllCustomersByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
@@ -25,6 +28,12 @@ public class CustomerController {
             @RequestParam(defaultValue = "ASC") String order,
             CustomerSearch search) {
         Page<CustomerDto> customers = customerService.findCustomerByCriteria(search, page, size, sortBy, order);
+        return ResponseEntity.ok(customers);
+    }
+    @GetMapping(path = "/select")
+    public ResponseEntity<List<CustomerSelect>> findAllCustomerSelect(
+            @RequestParam(required = false) String searchQuery) {
+        List<CustomerSelect> customers = customerService.findAllCustomerSelect(searchQuery);
         return ResponseEntity.ok(customers);
     }
 

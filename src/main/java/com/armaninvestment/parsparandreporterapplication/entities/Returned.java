@@ -37,4 +37,10 @@ public class Returned{
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
+    @Column(name = "jalali_year")
+    private Integer jalaliYear;
+
+    @Column(name = "month")
+    private Integer month;
+
 }
