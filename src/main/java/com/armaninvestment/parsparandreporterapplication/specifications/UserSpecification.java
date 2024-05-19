@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.specifications;
 
+import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.entities.User;
 import com.armaninvestment.parsparandreporterapplication.searchForms.UserSearch;
 import jakarta.persistence.criteria.Predicate;
@@ -46,5 +47,15 @@ public class UserSpecification {
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
+    }
+    public static Specification<User> getSelectSpecification(String searchParam){
+        return (root, query, cb) -> {
+            Predicate predicate = cb.conjunction();
+            if (searchParam !=null && !searchParam.isEmpty()) {
+                predicate =(cb.like(root.get("username"), "%" + searchParam.trim() + "%"));
+            }
+            return predicate;
+        };
+
     }
 }

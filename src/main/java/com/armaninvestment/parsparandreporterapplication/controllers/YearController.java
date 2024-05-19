@@ -18,7 +18,7 @@ import java.io.IOException;
 public class YearController {
     private final YearService yearService;
 
-    @GetMapping(path = {"/years", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<YearDto>> getAllYearsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,

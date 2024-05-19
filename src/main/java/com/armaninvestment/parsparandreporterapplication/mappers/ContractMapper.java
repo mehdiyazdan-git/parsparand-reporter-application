@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.mappers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.ContractSelectDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Contract;
 import org.mapstruct.*;
 
@@ -17,6 +18,8 @@ public interface ContractMapper {
 
     @InheritInverseConfiguration(name = "toEntity")
     ContractDto toDto(Contract contract);
+
+    ContractSelectDto toSelectDto(Contract contract);
 
     @InheritConfiguration(name = "toEntity")
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

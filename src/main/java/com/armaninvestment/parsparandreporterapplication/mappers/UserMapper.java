@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.mappers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.UserDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.UserSelectDto;
 import com.armaninvestment.parsparandreporterapplication.entities.User;
 import org.mapstruct.*;
 
@@ -14,6 +15,7 @@ public interface UserMapper {
     }
 
     UserDto toDto(User user);
+    UserSelectDto toSelectDto(User user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     User partialUpdate(UserDto userDto, @MappingTarget User user);

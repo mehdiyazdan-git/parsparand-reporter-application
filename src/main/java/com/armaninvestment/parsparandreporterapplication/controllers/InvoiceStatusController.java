@@ -11,13 +11,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/invoice-statuses")
 @RequiredArgsConstructor
 public class InvoiceStatusController {
     private final InvoiceStatusService invoiceStatusService;
 
-    @GetMapping(path = {"/invoice-statuses", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<InvoiceStatusDto>> getAllInvoiceStatusesByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,

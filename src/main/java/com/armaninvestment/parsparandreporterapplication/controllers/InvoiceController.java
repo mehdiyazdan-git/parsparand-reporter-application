@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-
+@CrossOrigin
 @RestController
 @RequestMapping("/api/invoices")
 @RequiredArgsConstructor
 public class InvoiceController {
     private final InvoiceService invoiceService;
 
-    @GetMapping(path = {"/invoices", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<InvoiceDto>> getAllInvoicesByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,

@@ -28,8 +28,4 @@ public class WarehouseReceiptItem {
     @JoinColumn(name = "warehouse_receipt_id")
     private WarehouseReceipt warehouseReceipt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "year_id")
-    private Year year;
-
 }

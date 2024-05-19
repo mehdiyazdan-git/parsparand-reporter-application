@@ -17,7 +17,10 @@ public interface PaymentMapper {
     @Mapping(target = "month", expression = "java(extractMonth(paymentDto.getPaymentDate()))")
     Payment toEntity(PaymentDto paymentDto);
 
-    @InheritInverseConfiguration(name = "toEntity")
+    @Mapping(source = "year.id", target = "yearId")
+    @Mapping(source = "year.name", target = "yearName")
+    @Mapping(source = "customer.id", target = "customerId")
+    @Mapping(source = "customer.name", target = "customerName")
     PaymentDto toDto(Payment payment);
 
     @InheritConfiguration(name = "toEntity")

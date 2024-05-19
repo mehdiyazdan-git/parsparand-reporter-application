@@ -50,4 +50,14 @@ public class ContractSpecification {
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
     }
+    public static Specification<Contract> getSelectSpecification(String searchParam){
+        return (root, query, cb) -> {
+            Predicate predicate = cb.conjunction();
+            if (searchParam !=null && !searchParam.isEmpty()) {
+                predicate =(cb.like(root.get("contractDescription"), "%" + searchParam.trim() + "%"));
+            }
+            return predicate;
+        };
+
+    }
 }

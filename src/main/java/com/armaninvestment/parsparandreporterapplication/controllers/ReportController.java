@@ -11,13 +11,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 public class ReportController {
     private final ReportService reportService;
 
-    @GetMapping(path = {"/reports", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ReportDto>> getAllReportsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,

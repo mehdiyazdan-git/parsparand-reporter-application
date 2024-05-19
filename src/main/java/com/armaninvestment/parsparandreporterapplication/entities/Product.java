@@ -5,8 +5,7 @@ import com.armaninvestment.parsparandreporterapplication.enums.ProductTypeConver
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -15,15 +14,15 @@ import java.util.Set;
 @Setter
 @Entity
 @Table(name = "product")
+@RequiredArgsConstructor
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
+    @Column(name = "id")
     private Long id;
 
     @Size(max = 255)
-    @NotNull
-    @Column(name = "measurement_index", nullable = false)
+    @Column(name = "measurement_index")
     private String measurementIndex;
 
     @Size(max = 255)
@@ -35,7 +34,7 @@ public class Product {
     private String productName;
 
     @Convert(converter = ProductTypeConverter.class)
-    @Column(name = "product_type", nullable = false)
+    @Column(name = "product_type")
     private ProductType productType;
 
     @OneToMany(mappedBy = "product")
@@ -46,4 +45,9 @@ public class Product {
 
     @OneToMany(mappedBy = "product")
     private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
+
+    public Product(String productName, ProductType productType) {
+        this.productName = productName;
+        this.productType = productType;
+    }
 }

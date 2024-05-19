@@ -15,6 +15,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     RestErrorResponse handleDatabaseIntegrityViolationException(
             DatabaseIntegrityViolationException ex) {
+        ex.printStackTrace();
         return new RestErrorResponse(
                 HttpStatus.CONFLICT.value(),
                 ex.getMessage(),
@@ -25,16 +26,18 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     RestErrorResponse handleEntityNotFoundException(
             EntityNotFoundException ex) {
+        ex.printStackTrace();
         return new RestErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
                 LocalDateTime.now());
     }
-    //handle IllegalArgumentException
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     RestErrorResponse handleIllegalArgumentException(
             IllegalArgumentException ex) {
+        ex.printStackTrace();
         return new RestErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage(),
@@ -47,6 +50,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     RestErrorResponse handleException(Exception ex) {
+        ex.printStackTrace();
         return new RestErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage(),

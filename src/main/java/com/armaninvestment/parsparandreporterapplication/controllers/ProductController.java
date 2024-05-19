@@ -1,6 +1,5 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
@@ -21,7 +20,7 @@ import java.util.List;
 public class ProductController {
     private final ProductService productService;
 
-    @GetMapping(path = {"/products", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ProductDto>> getAllProductsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,

@@ -32,6 +32,8 @@ public interface WarehouseReceiptMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(warehouseReceiptDto.getWarehouseReceiptDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(warehouseReceiptDto.getWarehouseReceiptDate()))")
+    @Mapping(target = "year", ignore = true)
+    @Mapping(target = "customer", ignore = true)
     WarehouseReceipt partialUpdate(WarehouseReceiptDto warehouseReceiptDto, @MappingTarget WarehouseReceipt warehouseReceipt);
 
     default Integer extractJalaliYear(LocalDate date) {

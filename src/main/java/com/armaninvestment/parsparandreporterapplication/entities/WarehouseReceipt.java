@@ -49,7 +49,7 @@ public class WarehouseReceipt{
     @OneToMany(mappedBy = "warehouseReceipt")
     private Set<ReportItem> reportItems = new LinkedHashSet<>();
 
-    @OneToMany(mappedBy = "warehouseReceipt")
+    @OneToMany(mappedBy = "warehouseReceipt", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
 
 }

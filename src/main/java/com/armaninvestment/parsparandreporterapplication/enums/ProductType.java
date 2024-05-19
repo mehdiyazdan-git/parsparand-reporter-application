@@ -9,8 +9,8 @@ public enum ProductType {
     private final String caption;
 
     ProductType(int value, String caption) {
-        this.value = value;
-        this.caption = caption;
+        this.value = (value > 0) ? value : 2;
+        this.caption =  (caption != null) ? caption : "اصلی";
     }
 
     public int getValue() {

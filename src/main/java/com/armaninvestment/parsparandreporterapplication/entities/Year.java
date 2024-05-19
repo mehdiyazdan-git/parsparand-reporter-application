@@ -2,6 +2,7 @@ package com.armaninvestment.parsparandreporterapplication.entities;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.util.LinkedHashSet;
@@ -10,6 +11,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
+@RequiredArgsConstructor
 @Table(name = "year")
 public class Year{
     @Id
@@ -38,7 +40,7 @@ public class Year{
     @OneToMany(mappedBy = "year")
     private Set<WarehouseReceipt> warehouseReceipts = new LinkedHashSet<>();
 
-    @OneToMany(mappedBy = "year")
-    private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
-
+    public Year(Long name) {
+        this.name = name;
+    }
 }

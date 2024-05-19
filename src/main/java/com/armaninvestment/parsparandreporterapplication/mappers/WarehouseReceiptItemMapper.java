@@ -6,7 +6,7 @@ import org.mapstruct.*;
 
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
 public interface WarehouseReceiptItemMapper {
-    @Mapping(source = "yearId", target = "year.id")
+
     @Mapping(source = "productId", target = "product.id")
     WarehouseReceiptItem toEntity(WarehouseReceiptItemDto warehouseReceiptItemDto);
 

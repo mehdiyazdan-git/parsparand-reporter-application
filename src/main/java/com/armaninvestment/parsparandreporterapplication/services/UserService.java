@@ -1,10 +1,14 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
+import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.dtos.UserDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.UserSelectDto;
+import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.entities.User;
 import com.armaninvestment.parsparandreporterapplication.mappers.UserMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.UserRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.UserSearch;
+import com.armaninvestment.parsparandreporterapplication.specifications.CustomerSpecification;
 import com.armaninvestment.parsparandreporterapplication.specifications.UserSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataImporter;
@@ -32,6 +36,14 @@ public class UserService {
         Specification<User> specification = UserSpecification.bySearchCriteria(search);
         return userRepository.findAll(specification, pageRequest)
                 .map(userMapper::toDto);
+    }
+    public List<UserSelectDto> findAllUserSelect(String searchParam) {
+        Specification<User> specification = UserSpecification.getSelectSpecification(searchParam);
+        return userRepository
+                .findAll(specification)
+                .stream()
+                .map(userMapper::toSelectDto)
+                .collect(Collectors.toList());
     }
 
     public UserDto createUser(UserDto userDto) {

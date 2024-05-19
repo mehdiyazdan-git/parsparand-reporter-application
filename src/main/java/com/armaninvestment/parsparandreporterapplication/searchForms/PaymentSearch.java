@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.searchForms;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,10 +18,12 @@ import java.time.LocalDate;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PaymentSearch implements Serializable {
     private Long id;
-    private String description;
-    private LocalDate date;
-    private Long amount;
-    private String subject;
+    private LocalDate paymentDate;
+    private String paymentDescryption;
+    private Long customerId;
     private String customerName;
+    private Long yearId;
     private Long yearName;
+    private Long paymentAmount;
+    private String paymentSubject;
 }

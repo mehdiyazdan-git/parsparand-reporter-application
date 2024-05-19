@@ -1,6 +1,8 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.ContractSelectDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.UserSelectDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ContractService;
 import lombok.RequiredArgsConstructor;
@@ -10,14 +12,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
 public class ContractController {
     private final ContractService contractService;
 
-    @GetMapping(path = {"/contracts", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ContractDto>> getAllContractsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
@@ -26,6 +30,12 @@ public class ContractController {
             ContractSearch search) {
         Page<ContractDto> contracts = contractService.findContractByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(contracts);
+    }
+    @GetMapping(path = "/select")
+    public ResponseEntity<List<ContractSelectDto>> findAllContractSelect(
+            @RequestParam(required = false) String searchQuery) {
+        List<ContractSelectDto> users = contractService.findAllContractSelect(searchQuery);
+        return ResponseEntity.ok(users);
     }
 
     @GetMapping(path = {"/{id}"})

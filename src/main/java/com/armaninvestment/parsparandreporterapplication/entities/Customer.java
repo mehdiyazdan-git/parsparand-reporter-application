@@ -3,6 +3,7 @@ package com.armaninvestment.parsparandreporterapplication.entities;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.util.LinkedHashSet;
@@ -12,6 +13,7 @@ import java.util.Set;
 @Setter
 @Entity
 @Table(name = "customer")
+@RequiredArgsConstructor
 public class Customer{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -62,4 +64,8 @@ public class Customer{
     @OneToMany(mappedBy = "customer")
     private Set<WarehouseReceipt> warehouseReceipts = new LinkedHashSet<>();
 
+    public Customer(String name) {
+        this.name = name;
+
+    }
 }

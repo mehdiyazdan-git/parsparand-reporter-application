@@ -20,7 +20,7 @@ import java.util.List;
 public class CustomerController {
     private final CustomerService customerService;
 
-    @GetMapping(path = {"/customers", "/customers/"})
+    @GetMapping(path = {"", "/"})
     public ResponseEntity<Page<CustomerDto>> getAllCustomersByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,

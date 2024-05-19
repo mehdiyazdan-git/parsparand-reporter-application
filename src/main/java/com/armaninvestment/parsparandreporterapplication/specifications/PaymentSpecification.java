@@ -1,4 +1,5 @@
 package com.armaninvestment.parsparandreporterapplication.specifications;
+import com.github.eloyzone.jalalicalendar.DateConverter;
 
 
 import com.armaninvestment.parsparandreporterapplication.entities.Customer;
@@ -27,17 +28,17 @@ public class PaymentSpecification {
             if (searchCriteria.getId() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("id"), searchCriteria.getId()));
             }
-            if (searchCriteria.getDescription() != null && !searchCriteria.getDescription().isEmpty()) {
-                predicates.add(criteriaBuilder.like(root.get("description"), "%" + searchCriteria.getDescription() + "%"));
+            if (searchCriteria.getPaymentDescryption() != null && !searchCriteria.getPaymentDescryption().isEmpty()) {
+                predicates.add(criteriaBuilder.like(root.get("paymentDescryption"), "%" + searchCriteria.getPaymentDescryption() + "%"));
             }
-            if (searchCriteria.getDate() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("date"), searchCriteria.getDate()));
+            if (searchCriteria.getPaymentDate() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("paymentDate"), searchCriteria.getPaymentDate()));
             }
-            if (searchCriteria.getAmount() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("amount"), searchCriteria.getAmount()));
+            if (searchCriteria.getPaymentAmount() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("paymentAmount"), searchCriteria.getPaymentAmount()));
             }
-            if (searchCriteria.getSubject() != null && !searchCriteria.getSubject().isEmpty()) {
-                predicates.add(criteriaBuilder.like(root.get("subject"), "%" + searchCriteria.getSubject() + "%"));
+            if (searchCriteria.getPaymentSubject() != null && !searchCriteria.getPaymentSubject().isEmpty()) {
+                predicates.add(criteriaBuilder.like(root.get("paymentSubject"), "%" + searchCriteria.getPaymentSubject() + "%"));
             }
             if (searchCriteria.getCustomerName() != null && !searchCriteria.getCustomerName().isEmpty()) {
                 Join<Payment, Customer> customerJoin = root.join("customer", JoinType.LEFT);
@@ -45,7 +46,7 @@ public class PaymentSpecification {
             }
             if (searchCriteria.getYearName() != null) {
                 Join<Payment, Year> yearJoin = root.join("year", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(yearJoin.get("year"), searchCriteria.getYearName()));
+                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getYearName()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

@@ -22,7 +22,9 @@ public class PaymentDto implements Serializable {
     @Size(max = 255)
     private String paymentDescryption;
     private Long customerId;
+    private String customerName;
     private Long yearId;
+    private Long yearName;
     private Long paymentAmount;
     @Size(max = 255)
     private String paymentSubject;

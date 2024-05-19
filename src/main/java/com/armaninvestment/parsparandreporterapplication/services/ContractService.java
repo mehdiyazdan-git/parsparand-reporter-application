@@ -1,13 +1,17 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.ContractSelectDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.entities.Contract;
+import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.exceptions.DatabaseIntegrityViolationException;
 import com.armaninvestment.parsparandreporterapplication.mappers.ContractMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.ContractRepository;
 import com.armaninvestment.parsparandreporterapplication.repositories.InvoiceRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ContractSpecification;
+import com.armaninvestment.parsparandreporterapplication.specifications.CustomerSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataImporter;
 import jakarta.persistence.EntityNotFoundException;
@@ -36,6 +40,14 @@ public class ContractService {
         Specification<Contract> specification = ContractSpecification.bySearchCriteria(search);
         return contractRepository.findAll(specification, pageRequest)
                 .map(contractMapper::toDto);
+    }
+    public List<ContractSelectDto> findAllContractSelect(String searchParam) {
+        Specification<Contract> specification = ContractSpecification.getSelectSpecification(searchParam);
+        return contractRepository
+                .findAll(specification)
+                .stream()
+                .map(contractMapper::toSelectDto)
+                .collect(Collectors.toList());
     }
 
     public ContractDto getContractById(Long id) {

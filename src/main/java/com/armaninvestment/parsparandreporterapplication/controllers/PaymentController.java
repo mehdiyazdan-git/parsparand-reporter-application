@@ -11,13 +11,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
 public class PaymentController {
     private final PaymentService paymentService;
 
-    @GetMapping(path = {"/payments", ""})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<PaymentDto>> getAllPaymentsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,

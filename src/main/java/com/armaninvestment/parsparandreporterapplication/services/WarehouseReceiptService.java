@@ -3,7 +3,9 @@ package com.armaninvestment.parsparandreporterapplication.services;
 import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptDto;
 import com.armaninvestment.parsparandreporterapplication.entities.WarehouseReceipt;
 import com.armaninvestment.parsparandreporterapplication.mappers.WarehouseReceiptMapper;
+import com.armaninvestment.parsparandreporterapplication.repositories.CustomerRepository;
 import com.armaninvestment.parsparandreporterapplication.repositories.WarehouseReceiptRepository;
+import com.armaninvestment.parsparandreporterapplication.repositories.YearRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.WarehouseReceiptSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
@@ -14,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -25,6 +28,8 @@ import java.util.stream.Collectors;
 public class WarehouseReceiptService {
     private final WarehouseReceiptRepository warehouseReceiptRepository;
     private final WarehouseReceiptMapper warehouseReceiptMapper;
+    private final YearRepository yearRepository;
+    private final CustomerRepository customerRepository;
 
     public Page<WarehouseReceiptDto> findWarehouseReceiptByCriteria(WarehouseReceiptSearch search, int page, int size, String sortBy, String order) {
         Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
@@ -37,7 +42,7 @@ public class WarehouseReceiptService {
         var warehouseReceiptEntity = warehouseReceiptRepository.findById(id).orElseThrow();
         return warehouseReceiptMapper.toDto(warehouseReceiptEntity);
     }
-
+    @Transactional
     public WarehouseReceiptDto createWarehouseReceipt(WarehouseReceiptDto warehouseReceiptDto) {
 
         if (warehouseReceiptRepository.existsByWarehouseReceiptNumberAndYearId(warehouseReceiptDto.getWarehouseReceiptNumber(), warehouseReceiptDto.getYearId())) {
@@ -50,16 +55,30 @@ public class WarehouseReceiptService {
 
 
     public WarehouseReceiptDto updateWarehouseReceipt(Long id, WarehouseReceiptDto warehouseReceiptDto) {
-        var existingWarehouseReceipt = warehouseReceiptRepository.findById(id).orElseThrow(() -> new IllegalStateException("رسید انبار پیدا نشد."));
+        var existingWarehouseReceipt = warehouseReceiptRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("رسید انبار پیدا نشد."));
 
-        if (warehouseReceiptRepository.existsByWarehouseReceiptNumberAndYearIdAndIdNot(warehouseReceiptDto.getWarehouseReceiptNumber(), warehouseReceiptDto.getYearId(), id)) {
+        if (warehouseReceiptRepository.existsByWarehouseReceiptNumberAndYearIdAndIdNot(
+                warehouseReceiptDto.getWarehouseReceiptNumber(), warehouseReceiptDto.getYearId(), id)) {
             throw new IllegalStateException("یک رسید انبار دیگر با این شماره برای سال مورد نظر وجود دارد.");
         }
 
         WarehouseReceipt partialUpdate = warehouseReceiptMapper.partialUpdate(warehouseReceiptDto, existingWarehouseReceipt);
+
+        if (!partialUpdate.getYear().getId().equals(warehouseReceiptDto.getYearId())) {
+            partialUpdate.setYear(yearRepository.findById(warehouseReceiptDto.getYearId())
+                    .orElseThrow(() -> new IllegalStateException("سال یافت نشد.")));
+        }
+
+        if (!partialUpdate.getCustomer().getId().equals(warehouseReceiptDto.getCustomerId())) {
+            partialUpdate.setCustomer(customerRepository.findById(warehouseReceiptDto.getCustomerId())
+                    .orElseThrow(() -> new IllegalStateException("مشتری یافت نشد.")));
+        }
+
         var updatedWarehouseReceipt = warehouseReceiptRepository.save(partialUpdate);
         return warehouseReceiptMapper.toDto(updatedWarehouseReceipt);
     }
+
 
 
     public void deleteWarehouseReceipt(Long id) {
@@ -69,6 +88,12 @@ public class WarehouseReceiptService {
     public String importWarehouseReceiptsFromExcel(MultipartFile file) throws IOException {
         List<WarehouseReceiptDto> warehouseReceiptDtos = ExcelDataImporter.importData(file, WarehouseReceiptDto.class);
         List<WarehouseReceipt> warehouseReceipts = warehouseReceiptDtos.stream().map(warehouseReceiptMapper::toEntity).collect(Collectors.toList());
+
+        warehouseReceipts.forEach(warehouseReceipt -> {
+            warehouseReceipt.setCustomer(customerRepository.findById(warehouseReceipt.getCustomer().getId()).orElseThrow(() -> new IllegalStateException("مشتری یافت نشد.")));
+            warehouseReceipt.setYear(yearRepository.findById(warehouseReceipt.getYear().getId()).orElseThrow(() -> new IllegalStateException("سال یافت نشد.")));
+
+        });
         warehouseReceiptRepository.saveAll(warehouseReceipts);
         return warehouseReceipts.size() + " رسید انبار با موفقیت وارد شد.";
     }
