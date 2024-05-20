@@ -20,8 +20,8 @@ public class Customer{
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "monthly_report")
-    private Boolean monthlyReport;
+    @Column(name = "big_customer")
+    private Boolean bigCustomer = false;
 
     @Size(max = 255)
     @Column(name = "customer_code")

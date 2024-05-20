@@ -46,9 +46,17 @@ public class ParsparandReporterApplication {
 
         );
         return args -> {
-            yearRepository.saveAll(years);
-            customerRepository.saveAll(customers);
-            productRepository.saveAll(products);
+            if (yearRepository.count() == 0){
+                yearRepository.saveAll(years);
+            }
+
+            if (customerRepository.count() == 0){
+                customerRepository.saveAll(customers);
+            }
+
+            if (productRepository.count() == 0){
+                productRepository.saveAll(products);
+            }
         };
     }
 

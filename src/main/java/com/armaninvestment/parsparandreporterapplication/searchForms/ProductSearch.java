@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.searchForms;
 
+import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,5 +20,5 @@ public class ProductSearch implements Serializable {
     private String productCode;
     private String productName;
     private String measurementIndex;
-    private String productTypeCaption;
+    private ProductType productType;
 }

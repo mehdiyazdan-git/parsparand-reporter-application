@@ -2,6 +2,7 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
+import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -26,10 +27,13 @@ public class ProductController {
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
+            @RequestParam(required = false) ProductType productType,
             ProductSearch search) {
+        search.setProductType(productType);
         Page<ProductDto> products = productService.findProductByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(products);
     }
+
     @GetMapping(path = "/select")
     public ResponseEntity<List<ProductSelectDto>> findAllProductSelect(
             @RequestParam(required = false) String searchQuery) {

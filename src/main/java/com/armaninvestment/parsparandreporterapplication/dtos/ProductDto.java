@@ -17,15 +17,10 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class ProductDto implements Serializable {
+public class ProductDto {
     private Long id;
-    @NotNull
-    @Size(max = 255)
     private String measurementIndex;
-    @Size(max = 255)
     private String productCode;
-    @Size(max = 255)
     private String productName;
-    @NotNull
     private ProductType productType;
 }

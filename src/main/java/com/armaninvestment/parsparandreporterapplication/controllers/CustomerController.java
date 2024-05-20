@@ -26,7 +26,12 @@ public class CustomerController {
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
+            @RequestParam(required = false) Boolean bigCustomer, // Add this line to handle bigCustomer explicitly
             CustomerSearch search) {
+
+        // Set the bigCustomer field in the search object
+        search.setBigCustomer(bigCustomer != null ? bigCustomer : false);
+
         Page<CustomerDto> customers = customerService.findCustomerByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(customers);
     }

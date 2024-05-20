@@ -7,8 +7,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 @Repository
 public interface WarehouseReceiptRepository extends JpaRepository<WarehouseReceipt, Long>, JpaSpecificationExecutor<WarehouseReceipt> {
+
+    @Query("""
+            select w from WarehouseReceipt w
+            where w.warehouseReceiptNumber = :warehouseReceiptNumber and w.warehouseReceiptDate = :warehouseReceiptDate""")
+    Optional<WarehouseReceipt> findByWarehouseReceiptNumberAndWarehouseReceiptDate(@Param("warehouseReceiptNumber") Long warehouseReceiptNumber, @Param("warehouseReceiptDate") LocalDate warehouseReceiptDate);
     @Query("""
             select (count(w) > 0) from WarehouseReceipt w
             where w.warehouseReceiptNumber = :warehouseReceiptNumber and w.year.id = :yearId""")
@@ -24,4 +33,31 @@ public interface WarehouseReceiptRepository extends JpaRepository<WarehouseRecei
 
     @Query("select (count(w) > 0) from WarehouseReceipt w where w.year.id = :yearId")
     boolean existsByYearId(@Param("yearId") Long yearId);
+
+    @Query(nativeQuery = true, value = """
+        SELECT i.id, i.description
+        FROM (
+            SELECT wwc.id,
+                   CONCAT('حواله ', wwc.receiptNo, '-', wwc.customerName, ' تاریخ ', wwc.receiptDate, ' تعداد ', wwc.quantity) AS description
+            FROM (
+                SELECT wr.id,
+                       wr.warehouse_receipt_number AS receiptNo,
+                       gregorian_to_persian(wr.warehouse_receipt_date) AS receiptDate,
+                       c.name AS customerName,
+                       SUM(wri.quantity) AS quantity
+                FROM warehouse_receipt wr
+                JOIN warehouse_receipt_item wri ON wr.id = wri.warehouse_receipt_id
+                JOIN customer c ON c.id = wr.customer_id
+                WHERE :fiscalYearId IS NULL OR wr.year_id = :fiscalYearId
+                GROUP BY wr.id, wr.warehouse_receipt_number, wr.warehouse_receipt_date, c.name
+            ) wwc
+        ) i
+        WHERE :searchTerm IS NULL OR i.description ILIKE '%' || :searchTerm || '%'
+    """)
+    List<Object[]> searchWarehouseReceiptByDescriptionKeywords(
+            @Param("searchTerm") String searchTerm,
+            @Param("fiscalYearId") Long fiscalYearId
+    );
+
+
 }

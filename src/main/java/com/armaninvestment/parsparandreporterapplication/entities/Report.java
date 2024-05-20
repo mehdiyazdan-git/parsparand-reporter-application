@@ -36,7 +36,7 @@ public class Report{
     @JoinColumn(name = "year_id")
     private Year year;
 
-    @OneToMany(mappedBy = "report")
+    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ReportItem> reportItems = new LinkedHashSet<>();
 
 }

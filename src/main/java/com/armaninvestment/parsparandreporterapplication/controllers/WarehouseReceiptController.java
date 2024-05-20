@@ -1,6 +1,8 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
+import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptSelect;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.services.WarehouseReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
+
 @CrossOrigin
 @RestController
 @RequestMapping("/api/warehouse-receipts")
@@ -31,6 +35,19 @@ public class WarehouseReceiptController {
     @GetMapping(path = {"/{id}"})
     public ResponseEntity<WarehouseReceiptDto> getWarehouseReceiptById(@PathVariable Long id){
         return ResponseEntity.ok(warehouseReceiptService.getWarehouseReceiptById(id));
+    }
+
+    @GetMapping(path = "/select")
+    public ResponseEntity<List<WarehouseReceiptSelect>> findAllWarehouseReceiptSelect(
+            @RequestParam(required = false) String searchQuery,
+            @RequestParam(required = false) Long yearId
+            ) {
+       try {
+           return ResponseEntity.ok(warehouseReceiptService.findAllWarehouseReceiptSelect(searchQuery,yearId));
+       }catch (Exception e){
+             e.printStackTrace();
+           return ResponseEntity.badRequest().body(null);
+       }
     }
 
     @PostMapping(path = {"/", ""})

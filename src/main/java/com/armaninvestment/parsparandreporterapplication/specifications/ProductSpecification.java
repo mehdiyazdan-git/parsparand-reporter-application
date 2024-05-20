@@ -2,7 +2,6 @@ package com.armaninvestment.parsparandreporterapplication.specifications;
 
 import com.armaninvestment.parsparandreporterapplication.entities.Product;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
-import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -32,13 +31,8 @@ public class ProductSpecification {
             if (searchCriteria.getMeasurementIndex() != null && !searchCriteria.getMeasurementIndex().isEmpty()) {
                 predicates.add(criteriaBuilder.equal(root.get("measurementIndex"), searchCriteria.getMeasurementIndex()));
             }
-            if (searchCriteria.getProductTypeCaption() != null && !searchCriteria.getProductTypeCaption().isEmpty()) {
-                for (ProductType type : ProductType.values()) {
-                    if (type.getCaption().equals(searchCriteria.getProductTypeCaption())) {
-                        predicates.add(criteriaBuilder.equal(root.get("productType"), type.getValue()));
-                        break;
-                    }
-                }
+            if (searchCriteria.getProductType() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("productType"),searchCriteria.getProductType()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
@@ -46,6 +40,6 @@ public class ProductSpecification {
     }
 
     public static Specification<Product> getSelectSpecification(String searchParam) {
-         return (root, query, criteriaBuilder) -> criteriaBuilder.like(root.get("productName"), "%" + searchParam + "%");
+        return (root, query, criteriaBuilder) -> criteriaBuilder.like(root.get("productName"), "%" + searchParam + "%");
     }
 }

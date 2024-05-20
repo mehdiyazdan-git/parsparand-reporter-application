@@ -20,5 +20,22 @@ public enum ProductType {
     public String getCaption() {
         return caption;
     }
-}
 
+    public static ProductType fromCaption(String caption) {
+        for (ProductType type : values()) {
+            if (type.getCaption().equals(caption)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("مقدار نادرست برای ProductType: " + caption);
+    }
+
+    public static ProductType fromValue(int value) {
+        for (ProductType type : values()) {
+            if (type.getValue() == value) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("مقدار نادرست برای ProductType: " + value);
+    }
+}

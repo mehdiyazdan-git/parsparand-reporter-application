@@ -19,11 +19,19 @@ public class ProductTypeConverter implements AttributeConverter<ProductType, Int
         if (dbData == null) {
             return null;
         }
-        return switch (dbData) {
-            case 2 -> ProductType.MAIN;
-            case 6 -> ProductType.SCRAPT;
-            case 1 -> ProductType.RAWMATERIAL;
-            default -> throw new IllegalArgumentException("Unknown value: " + dbData);
-        };
+        return ProductType.fromValue(dbData);
     }
+
+    public static ProductType fromString(String dbData) {
+        if (dbData == null) {
+            return null;
+        }
+        try {
+            int value = Integer.parseInt(dbData);
+            return ProductType.fromValue(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid ProductType value: " + dbData);
+        }
+    }
+
 }

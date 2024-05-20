@@ -21,5 +21,5 @@ public class CustomerSearch implements Serializable {
     private String customerCode;
     private String economicCode;
     private String nationalCode;
-    private boolean bigCustomer;
+    private Boolean bigCustomer;  // Change to Boolean to handle null values
 }

@@ -38,7 +38,7 @@ public class CustomerSpecification {
             if (searchCriteria.getNationalCode() != null && !searchCriteria.getNationalCode().isEmpty()) {
                 predicates.add(criteriaBuilder.like(root.get("nationalCode"), "%" + searchCriteria.getNationalCode() + "%"));
             }
-            if (searchCriteria.isBigCustomer()) {
+            if (Boolean.TRUE.equals(searchCriteria.getBigCustomer())) { // Handle boolean check correctly
                 predicates.add(criteriaBuilder.isTrue(root.get("bigCustomer")));
             }
 

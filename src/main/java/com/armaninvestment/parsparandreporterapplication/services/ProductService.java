@@ -1,18 +1,20 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
-import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.entities.Product;
+import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
+import com.armaninvestment.parsparandreporterapplication.enums.ProductTypeConverter;
 import com.armaninvestment.parsparandreporterapplication.mappers.ProductMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.ProductRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
-import com.armaninvestment.parsparandreporterapplication.specifications.CustomerSpecification;
 import com.armaninvestment.parsparandreporterapplication.specifications.ProductSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataImporter;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -21,8 +23,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.getCellIntValue;
+import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.getCellStringValue;
 
 @Service
 @RequiredArgsConstructor
@@ -77,26 +82,66 @@ public class ProductService {
         }
         productRepository.deleteById(id);
     }
-
-    public String importProductsFromExcel(MultipartFile file) throws IOException {
-        List<ProductDto> productDtos = ExcelDataImporter.importData(file, ProductDto.class);
-        List<Product> products = productDtos.stream()
-                .map(productMapper::toEntity)
-                .collect(Collectors.toList());
-
-        for (Product product : products) {
-            validateProductUniqueness(product.getProductName(), product.getProductCode(), null);
-        }
-
-        productRepository.saveAll(products);
-        return products.size() + " محصول با موفقیت وارد شدند.";
-    }
-
     public byte[] exportProductsToExcel() throws IOException {
         List<ProductDto> productDtos = productRepository.findAll().stream()
                 .map(productMapper::toDto)
                 .collect(Collectors.toList());
         return ExcelDataExporter.exportData(productDtos, ProductDto.class);
+    }
+
+    public String importProductsFromExcel(MultipartFile file) throws IOException {
+        Map<String, ProductDto> productMap = new HashMap<>();
+
+        // Fetch all existing products once
+        Map<String, Product> existingProductsMap = productRepository.findAll().stream()
+                .collect(Collectors.toMap(Product::getProductCode, product -> product, (existing, replacement) -> existing));
+
+        Set<String> existingProductNames = existingProductsMap.values().stream()
+                .map(Product::getProductName)
+                .collect(Collectors.toSet());
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Iterator<Row> rows = sheet.rowIterator();
+
+            // Skip the header row
+            if (rows.hasNext()) {
+                rows.next();
+            }
+
+            int rowNum = 1;
+            while (rows.hasNext()) {
+                Row currentRow = rows.next();
+                rowNum++;
+                try {
+                    String measurementIndex = getCellStringValue(currentRow, 0, rowNum);
+                    String productCode = getCellStringValue(currentRow, 1, rowNum);
+                    String productName = getCellStringValue(currentRow, 2, rowNum);
+                    ProductType productType = ProductType.fromValue(getCellIntValue(currentRow, 3, rowNum));
+
+                    // Check for uniqueness
+                    if (existingProductsMap.containsKey(productCode)) {
+                        throw new IllegalStateException("محصول با کد " + productCode + " وجود دارد.");
+                    }
+                    if (existingProductNames.contains(productName)) {
+                        throw new IllegalStateException("محصول با نام " + productName + " وجود دارد.");
+                    }
+
+                    ProductDto productDto = new ProductDto(null, measurementIndex, productCode, productName, productType);
+                    productMap.put(productCode, productDto);
+
+                } catch (Exception e) {
+                    throw new RuntimeException("خطا در ردیف " + rowNum + ": " + e.getMessage(), e);
+                }
+            }
+        }
+
+        List<Product> products = productMap.values().stream()
+                .map(productMapper::toEntity)
+                .collect(Collectors.toList());
+
+        productRepository.saveAll(products);
+        return products.size() + " محصول با موفقیت وارد شدند.";
     }
 
     private void validateProductUniqueness(String productName, String productCode, Long id) {

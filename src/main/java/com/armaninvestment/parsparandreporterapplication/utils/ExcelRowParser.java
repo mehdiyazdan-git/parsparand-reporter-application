@@ -1,16 +1,17 @@
 package com.armaninvestment.parsparandreporterapplication.utils;
 
+import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.*;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ExcelRowParser {
 
@@ -19,45 +20,66 @@ public class ExcelRowParser {
             Constructor<T> constructor = dtoClass.getDeclaredConstructor();
             T dtoInstance = constructor.newInstance();
             Field[] fields = dtoClass.getDeclaredFields();
+            Map<Integer, String> columnNames = getColumnNames(fields);
 
             for (int colNum = 0; colNum < fields.length; colNum++) {
                 Field field = fields[colNum];
                 field.setAccessible(true);
-                Object value = getCellValue(row.getCell(colNum), field.getType());
-                field.set(dtoInstance, value);
+                try {
+                    Object value = getCellValue(row.getCell(colNum), field.getType(), columnNames, colNum, rowNum);
+                    field.set(dtoInstance, value);
+                } catch ( NumberFormatException e) {
+                    String columnName = columnNames.getOrDefault(colNum, "ستون ناشناخته");
+                    String errorMsg = "خطا در ردیف " + rowNum + "، ستون " + columnName + ": " + e.getMessage();
+                    throw new RuntimeException(errorMsg, e);
+                }
             }
             return dtoInstance;
         } catch (Exception e) {
-            throw new RuntimeException("Error creating DTO instance: " + e.getMessage(), e);
+            throw new RuntimeException("خطا در ایجاد نمونه DTO: " + e.getMessage(), e);
         }
     }
 
-    private static Object getCellValue(Cell cell, Class<?> targetType) {
+    private static Map<Integer, String> getColumnNames(Field[] fields) {
+        Map<Integer, String> columnNames = new HashMap<>();
+        for (int i = 0; i < fields.length; i++) {
+            columnNames.put(i, fields[i].getName());
+        }
+        return columnNames;
+    }
+
+    private static Object getCellValue(Cell cell, Class<?> targetType, Map<Integer, String> columnNames, int colNum, int rowNum) {
         if (cell == null || cell.getCellType() == CellType.BLANK) {
             return null;
         }
 
-        if (targetType == String.class) {
-            return cell.getStringCellValue();
-        }else if (targetType == Long.class) {
-            return convertCellToLong(cell);
-        }else if (targetType == LocalDate.class) {
-            return convertCellToDate(cell);
-        } else if (targetType == Boolean.class) {
-            return convertCellToBoolean(cell);
-        } else if (targetType.isEnum()) {
-            return convertCellToEnum(cell, (Class<Enum>) targetType);
-        }else if (targetType == Double.class) {
-            return convertCellToDouble(cell);
-        }else if (targetType == Integer.class) {
-            return convertCellToInteger(cell);
-        }else if (targetType == Float.class) {
-            return convertCellToFloat(cell);
-        }else if (targetType == BigDecimal.class) {
-            return convertCellToBigDecimal(cell);
+        try {
+            if (targetType == String.class) {
+                return cell.getCellType() == CellType.NUMERIC ? String.valueOf((long) cell.getNumericCellValue()) : cell.getStringCellValue();
+            } else if (targetType == Long.class) {
+                return convertCellToLong(cell);
+            } else if (targetType == LocalDate.class) {
+                return convertCellToDate(cell);
+            } else if (targetType == Boolean.class) {
+                return convertCellToBoolean(cell);
+            } else if (targetType.isEnum()) {
+                return convertCellToEnum(cell, (Class<Enum>) targetType);
+            } else if (targetType == Double.class) {
+                return convertCellToDouble(cell);
+            } else if (targetType == Integer.class) {
+                return convertCellToInteger(cell);
+            } else if (targetType == Float.class) {
+                return convertCellToFloat(cell);
+            } else if (targetType == BigDecimal.class) {
+                return convertCellToBigDecimal(cell);
+            }
+        } catch (IllegalArgumentException e) {
+            String columnName = columnNames.getOrDefault(colNum, "ستون ناشناخته");
+            String errorMsg = "خطا در ردیف " + rowNum + "، ستون " + columnName + ": " + e.getMessage();
+            throw new IllegalArgumentException(errorMsg, e);
         }
 
-        throw new IllegalArgumentException("Unsupported target type: " + targetType);
+        throw new IllegalArgumentException("نوع هدف پشتیبانی نمی‌شود: " + targetType);
     }
 
     private static Long convertCellToLong(Cell cell) {
@@ -67,7 +89,7 @@ public class ExcelRowParser {
             String cellValue = cell.getStringCellValue();
             return cellValue.isEmpty() ? null : Long.parseLong(cellValue);
         } else {
-            throw new IllegalArgumentException("Cell contains non-numeric data");
+            throw new IllegalArgumentException("سلول حاوی داده‌های غیر عددی است");
         }
     }
 
@@ -78,7 +100,7 @@ public class ExcelRowParser {
             String cellValue = cell.getStringCellValue();
             return cellValue.isEmpty() ? null : Double.parseDouble(cellValue);
         } else {
-            throw new IllegalArgumentException("Cell contains non-numeric data");
+            throw new IllegalArgumentException("سلول حاوی داده‌های غیر عددی است");
         }
     }
 
@@ -89,21 +111,21 @@ public class ExcelRowParser {
             String cellValue = cell.getStringCellValue();
             return cellValue.isEmpty() ? null : Integer.parseInt(cellValue);
         } else {
-            throw new IllegalArgumentException("Cell contains non-numeric data");
+            throw new IllegalArgumentException("سلول حاوی داده‌های غیر عددی است");
         }
     }
 
-    private static BigDecimal convertCellToBigDecimal(Cell cell){
+    private static BigDecimal convertCellToBigDecimal(Cell cell) {
         if (cell.getCellType() == CellType.NUMERIC) {
             return BigDecimal.valueOf(cell.getNumericCellValue());
         } else if (cell.getCellType() == CellType.STRING) {
             String cellValue = cell.getStringCellValue();
             return StringUtils.hasText(cellValue) ? new BigDecimal(cellValue) : null;
         } else {
-            throw new IllegalArgumentException("Cell contains non-numeric data");
+            throw new IllegalArgumentException("سلول حاوی داده‌های غیر عددی است");
         }
     }
-    //convert cell to float
+
     private static Float convertCellToFloat(Cell cell) {
         if (cell.getCellType() == CellType.NUMERIC) {
             return (float) cell.getNumericCellValue();
@@ -111,9 +133,10 @@ public class ExcelRowParser {
             String cellValue = cell.getStringCellValue();
             return cellValue.isEmpty() ? null : Float.parseFloat(cellValue);
         } else {
-            throw new IllegalArgumentException("Cell contains non-numeric data");
+            throw new IllegalArgumentException("سلول حاوی داده‌های غیر عددی است");
         }
     }
+
     private static LocalDate convertCellToDate(Cell cell) {
         DateConverter dateConverter = new DateConverter();
         String[] parts = cell.getStringCellValue().split("-");
@@ -134,7 +157,7 @@ public class ExcelRowParser {
             String cellValue = cell.getStringCellValue();
             return cellValue.isEmpty() ? null : Boolean.parseBoolean(cellValue);
         } else {
-            throw new IllegalArgumentException("Cell contains non-boolean data");
+            throw new IllegalArgumentException("سلول حاوی داده‌های غیر منطقی است");
         }
     }
 
@@ -144,11 +167,13 @@ public class ExcelRowParser {
             try {
                 return Enum.valueOf(enumType, cellValue);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid enum value: " + cellValue + " for enum class " + enumType.getName(), e);
+                if (enumType == ProductType.class) {
+                    return (E) ProductType.fromCaption(cellValue);
+                }
+                throw new IllegalArgumentException("مقدار نادرست enum: " + cellValue + " برای کلاس " + enumType.getName(), e);
             }
         } else {
-            throw new IllegalArgumentException("Cell must contain string data for enum conversion");
+            throw new IllegalArgumentException("سلول باید حاوی داده‌های متنی برای تبدیل به enum باشد");
         }
     }
-
 }

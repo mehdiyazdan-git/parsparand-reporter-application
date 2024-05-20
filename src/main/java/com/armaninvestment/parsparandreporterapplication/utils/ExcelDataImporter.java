@@ -13,7 +13,7 @@ public class ExcelDataImporter {
 
     public static <T> List<T> importData(MultipartFile file, Class<T> dtoClass) throws IOException {
         if (file.isEmpty()) {
-            throw new RuntimeException("The provided file is empty.");
+            throw new RuntimeException("پرونده ارائه شده خالی است.");
         }
 
         List<T> dtos = new ArrayList<>();
@@ -33,9 +33,10 @@ public class ExcelDataImporter {
                     T dto = ExcelRowParser.parseRowToDto(currentRow, dtoClass, rowNum);
                     dtos.add(dto);
                 } catch (RuntimeException e) {
-                    System.out.println("Error at row " + rowNum + ": " + e.getMessage());
+                    String errorMsg = "خطا در ردیف " + rowNum + ": " + e.getMessage();
+                    System.out.println(errorMsg);
                     e.printStackTrace();
-                    throw new RuntimeException("Error at row " + rowNum + ": " + e.getMessage(), e);
+                    throw new RuntimeException(errorMsg, e);
                 }
                 rowNum++;
             }

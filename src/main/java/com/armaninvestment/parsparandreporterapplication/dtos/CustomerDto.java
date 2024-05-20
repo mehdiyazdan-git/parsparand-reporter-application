@@ -17,7 +17,7 @@ import java.io.Serializable;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CustomerDto implements Serializable {
     private Long id;
-    private Boolean monthlyReport;
+    private Boolean bigCustomer;
     @Size(max = 255)
     private String customerCode;
     @Size(max = 255)
