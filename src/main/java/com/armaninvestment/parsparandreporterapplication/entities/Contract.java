@@ -53,7 +53,7 @@ public class Contract{
     @OneToMany(mappedBy = "contract")
     private Set<Addendum> addenda = new LinkedHashSet<>();
 
-    @OneToMany(mappedBy = "contract")
+    @OneToMany(mappedBy = "contract",cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ContractItem> contractItems = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "contract")

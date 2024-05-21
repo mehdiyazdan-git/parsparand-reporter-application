@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.specifications;
 
+import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.entities.InvoiceStatus;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceStatusSearch;
 import jakarta.persistence.criteria.Expression;
@@ -29,5 +30,15 @@ public class InvoiceStatusSpecification {
 
             return predicate;
         };
+    }
+    public static Specification<InvoiceStatus> getSelectSpecification(String searchParam){
+        return (root, query, cb) -> {
+            Predicate predicate = cb.conjunction();
+            if (searchParam !=null && !searchParam.isEmpty()) {
+                predicate =(cb.like(root.get("name"), "%" + searchParam.trim() + "%"));
+            }
+            return predicate;
+        };
+
     }
 }

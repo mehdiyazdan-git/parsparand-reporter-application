@@ -27,6 +27,7 @@ public class ContractDto implements Serializable {
     private LocalDate endDate;
     private LocalDate startDate;
     private Long customerId;
+    private String customerName;
     private Long yearId;
     private Double advancePayment;
     private Double insuranceDeposit;

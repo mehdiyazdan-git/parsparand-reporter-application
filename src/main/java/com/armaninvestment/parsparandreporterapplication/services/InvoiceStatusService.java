@@ -33,6 +33,15 @@ public class InvoiceStatusService {
         return invoiceStatusRepository.findAll(specification, pageRequest)
                 .map(invoiceStatusMapper::toDto);
     }
+    public List<InvoiceStatusDto> invoiceStatusSelect(String searchParam) {
+        Specification<InvoiceStatus> specification = InvoiceStatusSpecification.getSelectSpecification(searchParam);
+        return invoiceStatusRepository
+                .findAll(specification)
+                .stream()
+                .map(invoiceStatusMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
 
     public InvoiceStatusDto createInvoiceStatus(InvoiceStatusDto invoiceStatusDto) {
         var invoiceStatusEntity = invoiceStatusMapper.toEntity(invoiceStatusDto);

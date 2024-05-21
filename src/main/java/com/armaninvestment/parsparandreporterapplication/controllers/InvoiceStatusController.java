@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @CrossOrigin
 @RestController
@@ -27,6 +28,10 @@ public class InvoiceStatusController {
             InvoiceStatusSearch search) {
         Page<InvoiceStatusDto> invoiceStatuses = invoiceStatusService.findInvoiceStatusByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(invoiceStatuses);
+    }
+    @GetMapping(path = {"/select"})
+    public List<InvoiceStatusDto> invoiceStatusSelect(@RequestParam(required = false) String searchParam) {
+        return invoiceStatusService.invoiceStatusSelect(searchParam);
     }
 
     @GetMapping(path = {"/{id}"})

@@ -16,9 +16,12 @@ public interface ContractMapper {
         contract.getContractItems().forEach(contractItem -> contractItem.setContract(contract));
     }
 
-    @InheritInverseConfiguration(name = "toEntity")
+    @Mapping(source = "year.id", target = "yearId")
+    @Mapping(source = "customer.id", target = "customerId")
+    @Mapping(source = "customer.name", target = "customerName")
     ContractDto toDto(Contract contract);
 
+    @Mapping(source = "contractDescription", target = "name")
     ContractSelectDto toSelectDto(Contract contract);
 
     @InheritConfiguration(name = "toEntity")

@@ -18,5 +18,5 @@ import java.io.Serializable;
 public class ContractSelectDto implements Serializable {
     private Long id;
     @Size(max = 255)
-    private String contractDescription;
+    private String name;
 }

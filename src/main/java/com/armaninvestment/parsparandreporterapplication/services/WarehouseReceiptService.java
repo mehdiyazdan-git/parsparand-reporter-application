@@ -130,6 +130,7 @@ public class WarehouseReceiptService {
                 Row currentRow = rows.next();
                 rowNum++;
                 try {
+                    //receiptNumber , receiptDate , receiptDescription , customerCode , yearName , quantity , unitPrice , productCode
                     Long receiptNumber = getCellLongValue(currentRow, 0, rowNum);
                     LocalDate receiptDate = convertToDate(getCellStringValue(currentRow, 1, rowNum));
                     String receiptDescription = getCellStringValue(currentRow, 2, rowNum);
