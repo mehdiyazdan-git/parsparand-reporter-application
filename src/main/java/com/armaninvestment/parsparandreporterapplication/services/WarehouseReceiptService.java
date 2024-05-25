@@ -15,6 +15,8 @@ import com.armaninvestment.parsparandreporterapplication.repositories.YearReposi
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.WarehouseReceiptSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
+import com.github.eloyzone.jalalicalendar.DateConverter;
+import com.github.eloyzone.jalalicalendar.JalaliDate;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -26,7 +28,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -190,5 +191,12 @@ public class WarehouseReceiptService {
 
             return warehouseReceiptSelect;
         }).collect(Collectors.toList());
+    }
+
+    public Integer getCurrentYear() {
+        LocalDate date = LocalDate.now();
+        DateConverter dateConverter = new DateConverter();
+        JalaliDate jalaliDate = dateConverter.gregorianToJalali(date.getYear(), date.getMonthValue(), date.getDayOfMonth());
+        return jalaliDate.getYear();
     }
 }

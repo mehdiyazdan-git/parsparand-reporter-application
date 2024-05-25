@@ -1,8 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.specifications;
 
 
-import com.armaninvestment.parsparandreporterapplication.entities.Adjustment;
-import com.armaninvestment.parsparandreporterapplication.entities.Invoice;
+import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.AdjustmentSearch;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -47,6 +46,10 @@ public class AdjustmentSpecification {
             if (searchCriteria.getInvoiceNumber() != null) {
                 Join<Adjustment, Invoice> invoiceJoin = root.join("invoice", JoinType.LEFT);
                 predicates.add(criteriaBuilder.equal(invoiceJoin.get("invoiceNumber"), searchCriteria.getInvoiceNumber()));
+            }
+            if (searchCriteria.getJalaliYear() != null) {
+                Join<Adjustment, Year> yearJoin = root.join("year", JoinType.LEFT);
+                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

@@ -60,7 +60,7 @@ public class Invoice{
     @OneToMany(mappedBy = "invoice")
     private Set<Adjustment> adjustments = new LinkedHashSet<>();
 
-    @OneToMany(mappedBy = "invoice")
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<InvoiceItem> invoiceItems = new LinkedHashSet<>();
 
     @Column(name = "jalali_year")

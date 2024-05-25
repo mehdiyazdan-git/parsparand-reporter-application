@@ -1,4 +1,5 @@
 package com.armaninvestment.parsparandreporterapplication.specifications;
+import com.armaninvestment.parsparandreporterapplication.entities.WarehouseReceipt;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 
 
@@ -47,6 +48,10 @@ public class PaymentSpecification {
             if (searchCriteria.getYearName() != null) {
                 Join<Payment, Year> yearJoin = root.join("year", JoinType.LEFT);
                 predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getYearName()));
+            }
+            if (searchCriteria.getJalaliYear() != null) {
+                Join<Payment, Year> yearJoin = root.join("year", JoinType.LEFT);
+                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

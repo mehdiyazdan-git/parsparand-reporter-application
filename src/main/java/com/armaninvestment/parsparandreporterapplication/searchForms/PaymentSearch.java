@@ -22,7 +22,7 @@ public class PaymentSearch implements Serializable {
     private String paymentDescryption;
     private Long customerId;
     private String customerName;
-    private Long yearId;
+    private Integer jalaliYear;
     private Long yearName;
     private Long paymentAmount;
     private String paymentSubject;

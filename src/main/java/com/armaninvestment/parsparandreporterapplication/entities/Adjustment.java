@@ -41,6 +41,10 @@ public class Adjustment{
     @Column(name = "adjustment_number")
     private Long adjustmentNumber;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "year_id")
+    private Year year;
+
     @Column(name = "jalali_year")
     private Integer jalaliYear;
 

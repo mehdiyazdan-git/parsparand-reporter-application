@@ -3,6 +3,8 @@ package com.armaninvestment.parsparandreporterapplication.specifications;
 
 import com.armaninvestment.parsparandreporterapplication.entities.Contract;
 import com.armaninvestment.parsparandreporterapplication.entities.Customer;
+import com.armaninvestment.parsparandreporterapplication.entities.Returned;
+import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -45,6 +47,10 @@ public class ContractSpecification {
             if (searchCriteria.getCustomerName() != null && !searchCriteria.getCustomerName().isEmpty()) {
                 Join<Contract, Customer> customerJoin = root.join("customer", JoinType.LEFT);
                 predicates.add(criteriaBuilder.like(customerJoin.get("name"), "%" + searchCriteria.getCustomerName() + "%"));
+            }
+            if (searchCriteria.getJalaliYear() != null) {
+                Join<Contract, Year> yearJoin = root.join("year", JoinType.LEFT);
+                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

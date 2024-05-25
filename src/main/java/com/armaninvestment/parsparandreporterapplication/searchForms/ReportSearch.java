@@ -17,7 +17,7 @@ import java.time.LocalDate;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ReportSearch implements Serializable {
     private Long id;
-    private String explanation;
-    private LocalDate date;
-    private Long yearName;
+    private String reportExplanation;
+    private LocalDate reportDate;
+    private Integer JalaliYear;
 }

@@ -39,6 +39,7 @@ public class InvoiceService {
     private final ContractRepository contractRepository;
     private final ProductRepository productRepository;
     private final WarehouseReceiptRepository warehouseReceiptRepository;
+    private final InvoiceStatusRepository invoiceStatusRepository;
 
     public Page<InvoiceDto> findInvoiceByCriteria(InvoiceSearch search, int page, int size, String sortBy, String order) {
         Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
@@ -116,7 +117,7 @@ public class InvoiceService {
     public String importInvoicesFromExcel(MultipartFile file) throws IOException {
         Map<Long, InvoiceDto> invoicesMap = new HashMap<>();
 
-        // Fetch all necessary data once
+        // Fetch all necessary data once and store them in maps for quick access
         Map<String, Customer> customersMap = customerRepository.findAll().stream()
                 .collect(Collectors.toMap(Customer::getCustomerCode, customer -> customer, (existing, replacement) -> existing));
         Map<Long, Year> yearsMap = yearRepository.findAll().stream()
@@ -125,6 +126,8 @@ public class InvoiceService {
                 .collect(Collectors.toMap(Contract::getContractNumber, contract -> contract, (existing, replacement) -> existing));
         Map<String, Product> productsMap = productRepository.findAll().stream()
                 .collect(Collectors.toMap(Product::getProductCode, product -> product, (existing, replacement) -> existing));
+        Map<Integer, InvoiceStatus> invoiceStatusesMap = invoiceStatusRepository.findAll().stream()
+                .collect(Collectors.toMap(InvoiceStatus::getId, invoiceStatus -> invoiceStatus, (existing, replacement) -> existing));
         Map<String, WarehouseReceipt> warehouseReceiptsMap = warehouseReceiptRepository.findAll().stream()
                 .collect(Collectors.toMap(
                         wr -> wr.getWarehouseReceiptNumber() + "-" + wr.getWarehouseReceiptDate(),
@@ -146,7 +149,6 @@ public class InvoiceService {
                 Row currentRow = rows.next();
                 rowNum++;
                 try {
-                    // invoiceNumber, issuedDate, dueDate, salesType, contractNumber, customerCode, advancedPayment, insuranceDeposit, performanceBound, yearName, quantity, unitPrice, productCode, warehouseReceiptNumber, warehouseReceiptDate
                     Long invoiceNumber = getCellLongValue(currentRow, 0, rowNum);
                     LocalDate issuedDate = convertToDate(getCellStringValue(currentRow, 1, rowNum));
                     LocalDate dueDate = convertToDate(getCellStringValue(currentRow, 2, rowNum));
@@ -162,12 +164,16 @@ public class InvoiceService {
                     String productCode = getCellStringValue(currentRow, 12, rowNum);
                     Long warehouseReceiptNumber = getCellLongValue(currentRow, 13, rowNum);
                     LocalDate warehouseReceiptDate = convertToDate(getCellStringValue(currentRow, 14, rowNum));
+                    Integer invoiceStatusId = getCellIntValue(currentRow, 15, rowNum);
 
-                    Year year = Optional.ofNullable(yearsMap.get(yearName)).orElseThrow(() -> new IllegalStateException("سال با نام " + yearName + " یافت نشد."));
-                    Customer customer = Optional.ofNullable(customersMap.get(customerCode)).orElseThrow(() -> new IllegalStateException("مشتری با کد " + customerCode + " یافت نشد."));
-                    Product product = Optional.ofNullable(productsMap.get(productCode)).orElseThrow(() -> new IllegalStateException("محصول با کد " + productCode + " یافت نشد."));
-
-
+                    Year year = Optional.ofNullable(yearsMap.get(yearName))
+                            .orElseThrow(() -> new IllegalStateException("سال با نام " + yearName + " یافت نشد."));
+                    Customer customer = Optional.ofNullable(customersMap.get(customerCode))
+                            .orElseThrow(() -> new IllegalStateException("مشتری با کد " + customerCode + " یافت نشد."));
+                    Product product = Optional.ofNullable(productsMap.get(productCode))
+                            .orElseThrow(() -> new IllegalStateException("محصول با کد " + productCode + " یافت نشد."));
+                    InvoiceStatus invoiceStatus = Optional.ofNullable(invoiceStatusesMap.get(invoiceStatusId))
+                            .orElseThrow(() -> new IllegalStateException("وضعیت فاکتور با شماره " + invoiceNumber + " یافت نشد."));
                     String receiptKey = warehouseReceiptNumber + "-" + warehouseReceiptDate;
                     WarehouseReceipt warehouseReceipt = Optional.ofNullable(warehouseReceiptsMap.get(receiptKey))
                             .orElseThrow(() -> new IllegalStateException("رسید انبار با شماره " + warehouseReceiptNumber + " و تاریخ " + warehouseReceiptDate + " یافت نشد."));
@@ -179,14 +185,21 @@ public class InvoiceService {
                         dto.setDueDate(dueDate);
                         dto.setSalesType(salesType);
                         dto.setCustomerId(customer.getId());
-                        if (contractNumber != null && !contractNumber.isEmpty()){
-                            Contract contract = Optional.ofNullable(contractsMap.get(contractNumber)).orElseThrow(() -> new IllegalStateException("قرارداد با شماره " + contractNumber + " یافت نشد."));
+                        if ("CONTRACTUAL_SALES".equals(salesType) && contractNumber != null && !contractNumber.isEmpty()) {
+                            Contract contract = Optional.ofNullable(contractsMap.get(contractNumber))
+                                    .orElseThrow(() -> new IllegalStateException("قرارداد با شماره " + contractNumber + " یافت نشد."));
                             dto.setContractId(contract.getId());
+                            dto.setAdvancedPayment(advancedPayment);
+                            dto.setInsuranceDeposit(insuranceDeposit);
+                            dto.setPerformanceBound(performanceBound);
+                        } else {
+                            dto.setContractId(null);
+                            dto.setAdvancedPayment(0L);
+                            dto.setInsuranceDeposit(0L);
+                            dto.setPerformanceBound(0L);
                         }
-                        dto.setAdvancedPayment(advancedPayment);
-                        dto.setInsuranceDeposit(insuranceDeposit);
-                        dto.setPerformanceBound(performanceBound);
                         dto.setYearId(year.getId());
+                        dto.setInvoiceStatusId(invoiceStatus.getId());
                         dto.setInvoiceItems(new LinkedHashSet<>());
                         return dto;
                     });
@@ -205,11 +218,23 @@ public class InvoiceService {
         }
 
         List<Invoice> invoices = invoicesMap.values().stream()
-                .map(invoiceMapper::toEntity)
+                .map(invoiceDto -> {
+                    Invoice entity = invoiceMapper.toEntity(invoiceDto);
+                    entity.setCustomer(customersMap.get(customerRepository.findById(invoiceDto.getCustomerId()).get().getId()));
+                    if ("CONTRACTUAL_SALES".equals(invoiceDto.getSalesType())) {
+                        entity.setContract(contractsMap.get(contractRepository.findById(invoiceDto.getContractId()).get().getId()));
+                    } else {
+                        entity.setContract(null);
+                    }
+                    entity.setYear(yearRepository.findById(invoiceDto.getYearId()).get());
+                    entity.setInvoiceStatus(invoiceStatusesMap.get(invoiceDto.getInvoiceStatusId()));
+                    return entity;
+                })
                 .collect(Collectors.toList());
 
         invoiceRepository.saveAll(invoices);
         return invoices.size() + " فاکتور با موفقیت وارد شدند.";
     }
+
 
 }

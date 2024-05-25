@@ -23,4 +23,5 @@ public class ReturnedSearch implements Serializable {
     private Long quantity;
     private Double unitPrice;
     private String customerName;
+    private Integer jalaliYear;
 }

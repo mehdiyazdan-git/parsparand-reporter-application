@@ -7,6 +7,7 @@ import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseRe
 import com.armaninvestment.parsparandreporterapplication.services.WarehouseReceiptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,10 +25,15 @@ public class WarehouseReceiptController {
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<WarehouseReceiptDto>> getAllWarehouseReceiptsByCriteria(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
             WarehouseReceiptSearch search) {
+
+        // اگر سال درخواست شده مشخص نباشد از سال جاری استفاده می شود
+        if (search.getJalaliYear() == null) {
+            search.setJalaliYear(warehouseReceiptService.getCurrentYear());
+        }
         Page<WarehouseReceiptDto> warehouseReceipts = warehouseReceiptService.findWarehouseReceiptByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(warehouseReceipts);
     }

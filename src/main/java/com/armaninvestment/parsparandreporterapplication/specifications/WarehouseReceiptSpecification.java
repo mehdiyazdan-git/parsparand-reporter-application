@@ -40,9 +40,9 @@ public class WarehouseReceiptSpecification {
                 Join<WarehouseReceipt, Customer> customerJoin = root.join("customer", JoinType.LEFT);
                 predicates.add(criteriaBuilder.like(customerJoin.get("name"), "%" + searchCriteria.getCustomerName() + "%"));
             }
-            if (searchCriteria.getYearName() != null) {
+            if (searchCriteria.getJalaliYear() != null) {
                 Join<WarehouseReceipt, Year> yearJoin = root.join("year", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(yearJoin.get("year"), searchCriteria.getYearName()));
+                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

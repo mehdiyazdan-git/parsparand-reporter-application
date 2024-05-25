@@ -43,4 +43,8 @@ public class Returned{
     @Column(name = "month")
     private Integer month;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "year_id")
+    private Year year;
+
 }

@@ -26,7 +26,9 @@ public class InvoiceDto implements Serializable {
     @Size(max = 20)
     private String salesType;
     private Long contractId;
+    private String contractNumber;
     private Long customerId;
+    private String customerName;
     private Integer invoiceStatusId;
     private Long advancedPayment;
     private Long insuranceDeposit;

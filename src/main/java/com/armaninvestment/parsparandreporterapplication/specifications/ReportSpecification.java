@@ -2,6 +2,7 @@ package com.armaninvestment.parsparandreporterapplication.specifications;
 
 
 import com.armaninvestment.parsparandreporterapplication.entities.Report;
+import com.armaninvestment.parsparandreporterapplication.entities.WarehouseReceipt;
 import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import jakarta.persistence.criteria.Join;
@@ -26,16 +27,15 @@ public class ReportSpecification {
             if (searchCriteria.getId() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("id"), searchCriteria.getId()));
             }
-            if (searchCriteria.getExplanation() != null && !searchCriteria.getExplanation().isEmpty()) {
-                predicates.add(criteriaBuilder.like(root.get("explanation"), "%" + searchCriteria.getExplanation() + "%"));
+            if (searchCriteria.getReportExplanation() != null && !searchCriteria.getReportExplanation().isEmpty()) {
+                predicates.add(criteriaBuilder.like(root.get("reportExplanation"), "%" + searchCriteria.getReportExplanation() + "%"));
             }
-            if (searchCriteria.getDate() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("date"), searchCriteria.getDate()));
+            if (searchCriteria.getReportDate() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("reportDate"), searchCriteria.getReportDate()));
             }
-            if (searchCriteria.getYearName() != null) {
-                // Assuming the Report entity has a relationship with a Year entity
-                Join<Report, Year> yearJoin = root.join("year", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(yearJoin.get("year"), searchCriteria.getYearName()));
+            if (searchCriteria.getJalaliYear() != null) {
+                Join<WarehouseReceipt, Year> yearJoin = root.join("year", JoinType.LEFT);
+                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

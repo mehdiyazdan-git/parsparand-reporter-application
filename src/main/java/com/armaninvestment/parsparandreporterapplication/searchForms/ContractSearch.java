@@ -25,4 +25,5 @@ public class ContractSearch implements Serializable {
     private Double performanceBond;
     private Double insuranceDeposit;
     private String customerName;
+    private Integer jalaliYear;
 }

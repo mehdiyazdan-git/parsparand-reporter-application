@@ -25,4 +25,6 @@ public class ReturnedDto implements Serializable {
     private Long returnedNumber;
     private Double unitPrice;
     private Long customerId;
+    private Integer jalaliYear;
+
 }
