@@ -21,9 +21,9 @@ public class InvoiceSearch implements Serializable {
     private Long id;
     private Long invoiceNumber;
     private LocalDate issuedDate;
-    private String contractContractNumber;
     private SalesType salesType;
     private String customerName;
     private String invoiceStatusName;
-    private Long yearName;
+    private Integer jalaliYear;
+
 }

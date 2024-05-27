@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.entities;
 
+import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -28,23 +29,24 @@ public class Invoice{
     @Column(name = "issued_date")
     private LocalDate issuedDate;
 
-    @Size(max = 20)
-    @Column(name = "sales_type", length = 20)
-    private String salesType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @Column(name = "sales_type", length = 20)
+    @Enumerated(EnumType.STRING)
+    private SalesType salesType;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "contract_id")
     private Contract contract;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "invoice_status_id")
     private InvoiceStatus invoiceStatus;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "year_id")
     private Year year;
 

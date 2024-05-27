@@ -27,6 +27,16 @@ public class InvoiceController {
         Page<InvoiceDto> invoices = invoiceService.findInvoiceByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(invoices);
     }
+    @GetMapping("/download-all-invoices.xlsx")
+    public ResponseEntity<byte[]> downloadAllInvoicesExcel(InvoiceSearch search) throws IOException {
+        byte[] excelData = invoiceService.exportInvoicesToExcel(search);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename("all_invoices.xlsx")
+                .build());
+        return ResponseEntity.ok().headers(headers).body(excelData);
+    }
 
     @GetMapping(path = {"/{id}"})
     public ResponseEntity<InvoiceDto> getInvoiceById(@PathVariable Long id){
@@ -34,31 +44,39 @@ public class InvoiceController {
     }
 
     @PostMapping(path = {"/", ""})
-    public ResponseEntity<InvoiceDto> createInvoice(@RequestBody InvoiceDto invoiceDto){
-        return ResponseEntity.ok(invoiceService.createInvoice(invoiceDto));
+    public ResponseEntity<?> createInvoice(@RequestBody InvoiceDto invoiceDto){
+        try {
+            return ResponseEntity.ok(invoiceService.createInvoice(invoiceDto));
+        }catch (IllegalStateException e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body("در ایجاد فاکتور خطایی رخ داده است");
+        }
     }
 
     @PutMapping(path = {"/{id}"})
-    public ResponseEntity<InvoiceDto> updateInvoice(@PathVariable Long id, @RequestBody InvoiceDto invoiceDto){
-        return ResponseEntity.ok(invoiceService.updateInvoice(id, invoiceDto));
+    public ResponseEntity<?> updateInvoice(@PathVariable Long id, @RequestBody InvoiceDto invoiceDto){
+        try {
+            InvoiceDto updateInvoice = invoiceService.updateInvoice(id, invoiceDto);
+            return ResponseEntity.status(HttpStatus.OK).body(updateInvoice);
+        }catch (IllegalStateException e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body("در ویرایش فاکتور خطایی رخ داده است");
+        }
     }
 
     @DeleteMapping(path = {"/{id}"})
-    public ResponseEntity<Void> deleteInvoice(@PathVariable Long id){
-        invoiceService.deleteInvoice(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteInvoice(@PathVariable Long id){
+        try {
+            invoiceService.deleteInvoice(id);
+            return ResponseEntity.noContent().build();
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body("در حذف فاکتور خطایی رخ داده است");
+        }
     }
 
-    @GetMapping("/download-all-invoices.xlsx")
-    public ResponseEntity<byte[]> downloadAllInvoicesExcel() throws IOException {
-        byte[] excelData = invoiceService.exportInvoicesToExcel();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("all_invoices.xlsx")
-                .build());
-        return ResponseEntity.ok().headers(headers).body(excelData);
-    }
+
 
     @PostMapping("/import")
     public ResponseEntity<?> importInvoicesFromExcel(@RequestParam("file") MultipartFile file) {

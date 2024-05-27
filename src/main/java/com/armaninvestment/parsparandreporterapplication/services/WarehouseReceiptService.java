@@ -14,14 +14,12 @@ import com.armaninvestment.parsparandreporterapplication.repositories.WarehouseR
 import com.armaninvestment.parsparandreporterapplication.repositories.YearRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.WarehouseReceiptSpecification;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
+import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -30,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
@@ -100,11 +99,7 @@ public class WarehouseReceiptService {
         warehouseReceiptRepository.deleteById(id);
     }
 
-    public byte[] exportWarehouseReceiptsToExcel() throws IOException {
-        List<WarehouseReceiptDto> warehouseReceiptDtos = warehouseReceiptRepository.findAll().stream().map(warehouseReceiptMapper::toDto)
-                .collect(Collectors.toList());
-        return ExcelDataExporter.exportData(warehouseReceiptDtos, WarehouseReceiptDto.class);
-    }
+
 
     public String importWarehouseReceiptsFromExcel(MultipartFile file) throws IOException {
         Map<Long, WarehouseReceiptDto> warehouseReceiptsMap = new HashMap<>();
@@ -198,5 +193,128 @@ public class WarehouseReceiptService {
         DateConverter dateConverter = new DateConverter();
         JalaliDate jalaliDate = dateConverter.gregorianToJalali(date.getYear(), date.getMonthValue(), date.getDayOfMonth());
         return jalaliDate.getYear();
+    }
+
+    public byte[] exportWarehouseReceiptsToExcel(WarehouseReceiptSearch search) {
+        List<WarehouseReceipt> warehouseReceipts = getWarehouseReceiptsBySearchCriteria(search);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Warehouse Receipts");
+            sheet.setRightToLeft(true); // Switch the sheet direction to right-to-left
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            CellStyle headerCellStyle = workbook.createCellStyle();
+            headerCellStyle.setFillForegroundColor(IndexedColors.SKY_BLUE.getIndex()); // Assuming light blue background
+            headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            String[] headers = {
+                    "شماره حواله", "تاریخ حواله", "شرح", "کد مشتری",
+                    "سال", "مبلغ حواله"
+            };
+
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerCellStyle);
+            }
+
+            // Create data rows
+            int rowNum = 1;
+            for (WarehouseReceipt warehouseReceipt : warehouseReceipts) {
+                Row row = sheet.createRow(rowNum++);
+                populateWarehouseReceiptRow(warehouseReceipt, row, workbook);
+            }
+
+            // Set borders for the entire data area
+            setBordersToAllCells(sheet);
+
+            // Adjust column widths
+            adjustColumnWidths(sheet);
+
+            // Write the workbook to a byte array output stream
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export warehouse receipts to Excel", e);
+        }
+    }
+
+    private void populateWarehouseReceiptRow(WarehouseReceipt warehouseReceipt, Row row, Workbook workbook) {
+        int cellNum = 0;
+        CellStyle cellStyle = workbook.createCellStyle();
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+
+        Cell cell;
+
+        cell = row.createCell(cellNum++);
+        cell.setCellValue(warehouseReceipt.getWarehouseReceiptNumber() != null ? warehouseReceipt.getWarehouseReceiptNumber() : 0);
+        cell.setCellStyle(cellStyle);
+
+        cell = row.createCell(cellNum++);
+        cell.setCellValue(warehouseReceipt.getWarehouseReceiptDate() != null ? DateConvertor.convertGregorianToJalali(warehouseReceipt.getWarehouseReceiptDate()) : "");
+        cell.setCellStyle(cellStyle);
+
+        cell = row.createCell(cellNum++);
+        cell.setCellValue(warehouseReceipt.getWarehouseReceiptDescription() != null ? warehouseReceipt.getWarehouseReceiptDescription() : "");
+        cell.setCellStyle(cellStyle);
+
+        cell = row.createCell(cellNum++);
+        cell.setCellValue(warehouseReceipt.getCustomer() != null ? warehouseReceipt.getCustomer().getCustomerCode() : "");
+        cell.setCellStyle(cellStyle);
+
+        cell = row.createCell(cellNum++);
+        cell.setCellValue(warehouseReceipt.getYear() != null ? warehouseReceipt.getYear().getName() : 0);
+        cell.setCellStyle(cellStyle);
+
+        long subTotal = 0L;
+        for (WarehouseReceiptItemDto item : warehouseReceiptMapper.toDto(warehouseReceipt).getWarehouseReceiptItems()) {
+            subTotal += item.getQuantity() * item.getUnitPrice();
+        }
+
+        cell = row.createCell(cellNum++);
+        cell.setCellValue(subTotal);
+        CellStyle subTotalCellStyle = workbook.createCellStyle();
+        subTotalCellStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
+        subTotalCellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cell.setCellStyle(subTotalCellStyle);
+    }
+
+
+
+    private void setBordersToAllCells(Sheet sheet) {
+        for (int rowNum = 0; rowNum <= sheet.getLastRowNum(); rowNum++) {
+            Row row = sheet.getRow(rowNum);
+            if (row != null) {
+                for (int cellNum = 0; cellNum < row.getLastCellNum(); cellNum++) {
+                    Cell cell = row.getCell(cellNum);
+                    if (cell == null) {
+                        cell = row.createCell(cellNum);
+                    }
+                    CellStyle cellStyle = cell.getSheet().getWorkbook().createCellStyle();
+                    cellStyle.setBorderBottom(BorderStyle.THIN);
+                    cellStyle.setBorderTop(BorderStyle.THIN);
+                    cellStyle.setBorderRight(BorderStyle.THIN);
+                    cellStyle.setBorderLeft(BorderStyle.THIN);
+                    cell.setCellStyle(cellStyle);
+                }
+            }
+        }
+    }
+
+    private void adjustColumnWidths(Sheet sheet) {
+        sheet.setColumnWidth(0, 256 * 10); // "شماره حواله"
+        sheet.setColumnWidth(1, 256 * 10); // "تاریخ حواله"
+        sheet.setColumnWidth(2, 256 * 100); // "شرح حواله"
+        sheet.setColumnWidth(3, 256 * 20); // "کد مشتری"
+        sheet.setColumnWidth(4, 256 * 10); // "سال"
+        sheet.setColumnWidth(5, 256 * 20); // "مبلغ حواله"
+    }
+
+
+    private List<WarehouseReceipt> getWarehouseReceiptsBySearchCriteria(WarehouseReceiptSearch search) {
+        Specification<WarehouseReceipt> specification = WarehouseReceiptSpecification.bySearchCriteria(search);
+        return warehouseReceiptRepository.findAll(specification);
     }
 }

@@ -1,13 +1,11 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptSelect;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.services.WarehouseReceiptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -78,8 +76,8 @@ public class WarehouseReceiptController {
     }
 
     @GetMapping("/download-all-warehouse-receipts.xlsx")
-    public ResponseEntity<byte[]> downloadAllWarehouseReceiptsExcel() throws IOException {
-        byte[] excelData = warehouseReceiptService.exportWarehouseReceiptsToExcel();
+    public ResponseEntity<byte[]> downloadAllWarehouseReceiptsExcel(WarehouseReceiptSearch warehouseReceiptSearch) {
+        byte[] excelData = warehouseReceiptService.exportWarehouseReceiptsToExcel(warehouseReceiptSearch);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDisposition(ContentDisposition.attachment()

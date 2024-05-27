@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 
 @Component
 public class DateConvertor {
-    public String convertGregorianToJalali(LocalDateTime localDateTime) {
+    public static String convertGregorianToJalali(LocalDateTime localDateTime) {
 
         // Create a DateTimeFormatter for formatting the time part.
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -44,4 +44,16 @@ public class DateConvertor {
 
         return dateConverter.jalaliToGregorian(jalaliYear, jalaliMonth, jalaliDay);
     };
+    public static String convertGregorianToJalali(LocalDate localDate) {
+
+        DateConverter dateConverter = new DateConverter();
+        JalaliDate jalaliDate = dateConverter.gregorianToJalali(
+                localDate.getYear(),
+                localDate.getMonthValue(),
+                localDate.getDayOfMonth()
+        );
+
+        return String.format("%d/%02d/%02d",
+                jalaliDate.getYear(), jalaliDate.getMonthPersian().getValue(), jalaliDate.getDay());
+    }
 }

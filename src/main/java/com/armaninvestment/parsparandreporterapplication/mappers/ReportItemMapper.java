@@ -4,7 +4,9 @@ import com.armaninvestment.parsparandreporterapplication.dtos.ReportItemDto;
 import com.armaninvestment.parsparandreporterapplication.entities.ReportItem;
 import org.mapstruct.*;
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
+@Mapper(
+        unmappedTargetPolicy = ReportingPolicy.IGNORE,
+        componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ReportItemMapper {
     @Mapping(source = "warehouseReceiptId", target = "warehouseReceipt.id")
     @Mapping(source = "customerId", target = "customer.id")

@@ -2,22 +2,22 @@ package com.armaninvestment.parsparandreporterapplication.mappers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Invoice;
-import org.mapstruct.*;
-
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
+import org.mapstruct.*;
 
 import java.time.LocalDate;
+import java.util.Set;
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING,uses = {InvoiceItemMapper.class})
 public interface InvoiceMapper {
 
     @Mapping(source = "invoiceStatusId", target = "invoiceStatus.id")
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(invoiceDto.getIssuedDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(invoiceDto.getIssuedDate()))")
-    @Mapping(target = "year", ignore = true)
-    @Mapping(target = "customer", ignore = true)
-    @Mapping(target = "contract", ignore = true)
+    @Mapping(source = "customerId", target = "customer.id")
+    @Mapping(source = "contractId", target = "contract.id")
+    @Mapping(source = "yearId", target = "year.id")
     Invoice toEntity(InvoiceDto invoiceDto);
 
     @Mapping(source = "year.id", target = "yearId")
@@ -36,6 +36,9 @@ public interface InvoiceMapper {
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(invoiceDto.getIssuedDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(invoiceDto.getIssuedDate()))")
     Invoice partialUpdate(InvoiceDto invoiceDto, @MappingTarget Invoice invoice);
+
+
+
 
     @AfterMapping
     default void linkInvoiceItems(@MappingTarget Invoice invoice) {

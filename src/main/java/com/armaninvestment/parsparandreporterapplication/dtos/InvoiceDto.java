@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.dtos;
 
+import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -24,7 +25,7 @@ public class InvoiceDto implements Serializable {
     private Long invoiceNumber;
     private LocalDate issuedDate;
     @Size(max = 20)
-    private String salesType;
+    private SalesType salesType;
     private Long contractId;
     private String contractNumber;
     private Long customerId;

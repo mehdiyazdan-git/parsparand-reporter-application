@@ -2,6 +2,7 @@ package com.armaninvestment.parsparandreporterapplication.specifications;
 
 
 import com.armaninvestment.parsparandreporterapplication.entities.*;
+import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -31,10 +32,6 @@ public class InvoiceSpecification {
             if (searchCriteria.getIssuedDate() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("issuedDate"), searchCriteria.getIssuedDate()));
             }
-            if (searchCriteria.getContractContractNumber() != null && !searchCriteria.getContractContractNumber().isEmpty()) {
-                Join<Invoice, Contract> contractJoin = root.join("contract", JoinType.LEFT);
-                predicates.add(criteriaBuilder.like(contractJoin.get("contractNumber"), "%" + searchCriteria.getContractContractNumber() + "%"));
-            }
             if (searchCriteria.getSalesType() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("salesType"), searchCriteria.getSalesType()));
             }
@@ -46,9 +43,9 @@ public class InvoiceSpecification {
                 Join<Invoice, InvoiceStatus> statusJoin = root.join("invoiceStatus", JoinType.LEFT);
                 predicates.add(criteriaBuilder.like(statusJoin.get("statusName"), "%" + searchCriteria.getInvoiceStatusName() + "%"));
             }
-            if (searchCriteria.getYearName() != null) {
+            if (searchCriteria.getJalaliYear() != null) {
                 Join<Invoice, Year> yearJoin = root.join("year", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(yearJoin.get("year"), searchCriteria.getYearName()));
+                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

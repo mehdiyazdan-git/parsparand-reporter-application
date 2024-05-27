@@ -3,15 +3,15 @@ package com.armaninvestment.parsparandreporterapplication.services;
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceItemDto;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
+import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import com.armaninvestment.parsparandreporterapplication.mappers.InvoiceMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.InvoiceSpecification;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
@@ -40,6 +41,9 @@ public class InvoiceService {
     private final ProductRepository productRepository;
     private final WarehouseReceiptRepository warehouseReceiptRepository;
     private final InvoiceStatusRepository invoiceStatusRepository;
+
+    @PersistenceContext
+    private final EntityManager entityManager;
 
     public Page<InvoiceDto> findInvoiceByCriteria(InvoiceSearch search, int page, int size, String sortBy, String order) {
         Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
@@ -68,12 +72,12 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceDto updateInvoice(Long id, InvoiceDto invoiceDto) {
-        var existingInvoice = invoiceRepository.findById(id).orElseThrow(() -> new IllegalStateException("صورت‌حساب پیدا نشد."));
 
+        Invoice invoice = invoiceRepository.findById(id).orElseThrow(() -> new IllegalStateException("صورت‌حساب پیدا نشد."));
         validateInvoiceUniquenessForUpdate(invoiceDto, id);
 
-        var updatedInvoice = invoiceMapper.toEntity(invoiceDto);
-        return invoiceMapper.toDto(invoiceRepository.save(updatedInvoice));
+        Invoice partialUpdate = invoiceMapper.partialUpdate(invoiceDto, invoice);
+        return invoiceMapper.toDto(invoiceRepository.save(partialUpdate));
     }
 
     private void validateInvoiceUniqueness(InvoiceDto invoiceDto) {
@@ -87,7 +91,7 @@ public class InvoiceService {
         if (invoiceRepository.existsByInvoiceNumberAndYearIdAndIdNot(invoiceDto.getInvoiceNumber(),invoiceDto.getYearId(), id)) {
             throw new IllegalStateException("یک صورت‌حساب دیگر با این شماره صورت‌حساب برای سال مالی مورد نظر وجود دارد.");
         }
-        validateReceiptIdUniqueness(invoiceDto);
+        validateReceiptIdUniquenessOnUpdateEntity(invoiceDto);
     }
 
     private void validateReceiptIdUniqueness(InvoiceDto invoiceDto) {
@@ -99,13 +103,14 @@ public class InvoiceService {
             });
         }
     }
-
-
-
-    public byte[] exportInvoicesToExcel() throws IOException {
-        List<InvoiceDto> invoiceDtos = invoiceRepository.findAll().stream().map(invoiceMapper::toDto)
-                .collect(Collectors.toList());
-        return ExcelDataExporter.exportData(invoiceDtos, InvoiceDto.class);
+    private void validateReceiptIdUniquenessOnUpdateEntity(InvoiceDto invoiceDto) {
+        if (invoiceDto.getInvoiceItems() != null) {
+            invoiceDto.getInvoiceItems().forEach(invoiceItemDto -> {
+                if (invoiceItemRepository.existsByWarehouseReceiptIdAndIdNot(invoiceItemDto.getWarehouseReceiptId(),invoiceItemDto.getId())){
+                    throw new IllegalStateException("برای این شماره حواله قبلا فاکتور صادر شده است.");
+                }
+            });
+        }
     }
     public void deleteInvoice(Long id) {
         if (!invoiceRepository.existsById(id)) {
@@ -113,9 +118,9 @@ public class InvoiceService {
         }
         invoiceRepository.deleteById(id);
     }
-
+    @Transactional
     public String importInvoicesFromExcel(MultipartFile file) throws IOException {
-        Map<Long, InvoiceDto> invoicesMap = new HashMap<>();
+        Map<Long, InvoiceDto> invoicesMap = new LinkedHashMap<>();
 
         // Fetch all necessary data once and store them in maps for quick access
         Map<String, Customer> customersMap = customerRepository.findAll().stream()
@@ -183,12 +188,10 @@ public class InvoiceService {
                         dto.setInvoiceNumber(invoiceNumber);
                         dto.setIssuedDate(issuedDate);
                         dto.setDueDate(dueDate);
-                        dto.setSalesType(salesType);
+                        dto.setSalesType(SalesType.valueOf(salesType));
                         dto.setCustomerId(customer.getId());
                         if ("CONTRACTUAL_SALES".equals(salesType) && contractNumber != null && !contractNumber.isEmpty()) {
-                            Contract contract = Optional.ofNullable(contractsMap.get(contractNumber))
-                                    .orElseThrow(() -> new IllegalStateException("قرارداد با شماره " + contractNumber + " یافت نشد."));
-                            dto.setContractId(contract.getId());
+                            dto.setContractId(contractsMap.get(contractNumber).getId());
                             dto.setAdvancedPayment(advancedPayment);
                             dto.setInsuranceDeposit(insuranceDeposit);
                             dto.setPerformanceBound(performanceBound);
@@ -220,21 +223,113 @@ public class InvoiceService {
         List<Invoice> invoices = invoicesMap.values().stream()
                 .map(invoiceDto -> {
                     Invoice entity = invoiceMapper.toEntity(invoiceDto);
-                    entity.setCustomer(customersMap.get(customerRepository.findById(invoiceDto.getCustomerId()).get().getId()));
-                    if ("CONTRACTUAL_SALES".equals(invoiceDto.getSalesType())) {
-                        entity.setContract(contractsMap.get(contractRepository.findById(invoiceDto.getContractId()).get().getId()));
+                    if (invoiceDto.getCustomerId() != null) {
+                        entity.setCustomer(entityManager.find(Customer.class, invoiceDto.getCustomerId()));
+                    }
+                    if ("CONTRACTUAL_SALES".equals(invoiceDto.getSalesType().name()) && invoiceDto.getContractId() != null) {
+                        entity.setContract(entityManager.find(Contract.class, invoiceDto.getContractId()));
                     } else {
                         entity.setContract(null);
                     }
-                    entity.setYear(yearRepository.findById(invoiceDto.getYearId()).get());
-                    entity.setInvoiceStatus(invoiceStatusesMap.get(invoiceDto.getInvoiceStatusId()));
+                    if (invoiceDto.getYearId() != null) {
+                        entity.setYear(entityManager.find(Year.class, invoiceDto.getYearId()));
+                    }
+                    if (invoiceDto.getInvoiceStatusId() != null){
+                        entity.setInvoiceStatus(entityManager.find(InvoiceStatus.class, invoiceDto.getInvoiceStatusId()));
+                    }
+                    entity.getInvoiceItems().forEach(item -> {
+                        if (item.getProductId() != null) {
+                            Product product = entityManager.find(Product.class, item.getProductId());
+                            product.addInvoiceItem(item);
+                            item.setProduct(product);
+                        }
+                        if (item.getWarehouseReceiptId() != null) {
+                            WarehouseReceipt warehouseReceipt = entityManager.find(WarehouseReceipt.class, item.getWarehouseReceiptId());
+                            warehouseReceipt.addInvoiceItem(item);
+                            item.setWarehouseReceipt(warehouseReceipt);
+                        }
+                        item.setInvoice(entity); // Ensure the bidirectional relationship is set
+                    });
                     return entity;
                 })
                 .collect(Collectors.toList());
 
-        invoiceRepository.saveAll(invoices);
+        invoiceRepository.saveAll(invoices); // Batch save to minimize database connection
         return invoices.size() + " فاکتور با موفقیت وارد شدند.";
     }
+
+    public byte[] exportInvoicesToExcel(InvoiceSearch search) {
+        List<Invoice> invoices = getInvoicesBySearchCriteria(search);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Invoices");
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            createHeaderCells(headerRow);
+
+            // Create data rows
+            int rowNum = 1;
+            for (Invoice invoice : invoices) {
+                Row row = sheet.createRow(rowNum++);
+                populateInvoiceRow(invoice, row);
+            }
+
+            // Adjust column widths
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Write the workbook to a byte array output stream
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export invoices to Excel", e);
+        }
+    }
+
+    private void createHeaderCells(Row headerRow) {
+        CellStyle headerCellStyle = headerRow.getSheet().getWorkbook().createCellStyle();
+        Font font = headerRow.getSheet().getWorkbook().createFont();
+        font.setBold(true);
+        headerCellStyle.setFont(font);
+
+        String[] headers = {
+                "Invoice Number", "Issued Date", "Due Date", "Sales Type", "Contract Number",
+                "Customer Code", "Advanced Payment", "Insurance Deposit", "Performance Bound",
+                "Year", "Status"
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerCellStyle);
+        }
+    }
+
+    private void populateInvoiceRow(Invoice invoice, Row row) {
+        int cellNum = 0;
+
+        row.createCell(cellNum++).setCellValue( (invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : 0));
+        row.createCell(cellNum++).setCellValue(invoice.getIssuedDate() != null ? invoice.getIssuedDate().toString() : "");
+        row.createCell(cellNum++).setCellValue(invoice.getDueDate() != null ? invoice.getDueDate().toString() : "");
+        row.createCell(cellNum++).setCellValue(invoice.getSalesType() != null ? invoice.getSalesType().name() : "");
+        row.createCell(cellNum++).setCellValue(invoice.getContract() != null ? invoice.getContract().getContractNumber() : "");
+        row.createCell(cellNum++).setCellValue(invoice.getCustomer() != null ? invoice.getCustomer().getCustomerCode() : "");
+        row.createCell(cellNum++).setCellValue(invoice.getAdvancedPayment() != null ? invoice.getAdvancedPayment() : 0);
+        row.createCell(cellNum++).setCellValue(invoice.getInsuranceDeposit() != null ? invoice.getInsuranceDeposit() : 0);
+        row.createCell(cellNum++).setCellValue(invoice.getPerformanceBound() != null ? invoice.getPerformanceBound() : 0);
+        row.createCell(cellNum++).setCellValue(invoice.getYear() != null ? invoice.getYear().getName() : 0);
+        row.createCell(cellNum++).setCellValue(invoice.getInvoiceStatus() != null ? invoice.getInvoiceStatus().getName() : "");
+    }
+
+    private List<Invoice> getInvoicesBySearchCriteria(InvoiceSearch search) {
+        Specification<Invoice> specification = InvoiceSpecification.bySearchCriteria(search);
+        return invoiceRepository.findAll(specification);
+    }
+
+
 
 
 }

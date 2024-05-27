@@ -52,4 +52,11 @@ public class WarehouseReceipt{
     @OneToMany(mappedBy = "warehouseReceipt", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
 
+    public void addInvoiceItem (InvoiceItem invoiceItem) {
+
+        invoiceItems.add(invoiceItem);
+        invoiceItem.setWarehouseReceipt(this);
+    }
+
+
 }
