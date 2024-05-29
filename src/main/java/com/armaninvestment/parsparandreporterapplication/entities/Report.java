@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -38,5 +39,18 @@ public class Report{
 
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ReportItem> reportItems = new LinkedHashSet<>();
+
+    public Double getTotalPrice(){
+        return (reportItems.stream()
+                .map(item -> item.getUnitPrice() * item.getQuantity() )
+                .reduce(0d, Double::sum));
+    }
+
+    public Long getTotalQuantity(){
+        return reportItems.stream()
+                .mapToLong(ReportItem::getQuantity)
+                .sum();
+    }
+
 
 }

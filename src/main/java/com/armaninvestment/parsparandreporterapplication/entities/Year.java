@@ -23,7 +23,7 @@ public class Year{
     private Long name;
 
     @OneToMany(mappedBy = "year")
-    private Set<Addendum> addenda = new LinkedHashSet<>();
+    private Set<Adjustment> adjustments = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "year")
     private Set<Contract> contracts = new LinkedHashSet<>();
@@ -43,4 +43,5 @@ public class Year{
     public Year(Long name) {
         this.name = name;
     }
+
 }

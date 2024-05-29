@@ -40,6 +40,12 @@ public class AdjustmentSpecification {
             if (searchCriteria.getQuantity() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("quantity"), searchCriteria.getQuantity()));
             }
+            if (searchCriteria.getTotalPrice() != null) {
+                predicates.add(criteriaBuilder.equal(
+                        criteriaBuilder.prod(root.get("unitPrice"), root.get("quantity")),
+                        searchCriteria.getTotalPrice()
+                ));
+            }
             if (searchCriteria.getAdjustmentType() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("adjustmentType"), searchCriteria.getAdjustmentType()));
             }

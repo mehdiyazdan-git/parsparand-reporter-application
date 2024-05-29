@@ -2,6 +2,7 @@ package com.armaninvestment.parsparandreporterapplication.mappers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Invoice;
+import com.armaninvestment.parsparandreporterapplication.entities.InvoiceSelectDto;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
 import org.mapstruct.*;
@@ -27,6 +28,7 @@ public interface InvoiceMapper {
     @Mapping(source = "contract.id", target = "contractId")
     @Mapping(source = "contract.contractNumber", target = "contractNumber")
     InvoiceDto toDto(Invoice invoice);
+
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(source = "yearId", target = "year.id")

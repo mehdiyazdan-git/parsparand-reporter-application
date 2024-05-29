@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -24,5 +25,7 @@ public class ReportDto implements Serializable {
     @Size(max = 255)
     private String reportExplanation;
     private Long yearId;
+    private Double totalPrice;
+    private Long totalQuantity;
     private Set<ReportItemDto> reportItems = new LinkedHashSet<>();
 }

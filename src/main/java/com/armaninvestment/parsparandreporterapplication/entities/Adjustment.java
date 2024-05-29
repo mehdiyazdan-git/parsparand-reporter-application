@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.entities;
 
+import com.armaninvestment.parsparandreporterapplication.enums.AdjustmentType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -17,9 +18,8 @@ public class Adjustment{
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Size(max = 255)
     @Column(name = "adjustment_type")
-    private String adjustmentType;
+    private AdjustmentType adjustmentType;
 
     @Size(max = 255)
     @Column(name = "description")
@@ -31,7 +31,7 @@ public class Adjustment{
     @Column(name = "unit_price")
     private Double unitPrice;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY,cascade = {CascadeType.MERGE})
     @JoinColumn(name = "invoice_id")
     private Invoice invoice;
 
@@ -50,5 +50,4 @@ public class Adjustment{
 
     @Column(name = "month")
     private Integer month;
-
 }

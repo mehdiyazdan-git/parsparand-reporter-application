@@ -58,5 +58,4 @@ public class Contract{
 
     @OneToMany(mappedBy = "contract")
     private Set<Invoice> invoices = new LinkedHashSet<>();
-
 }

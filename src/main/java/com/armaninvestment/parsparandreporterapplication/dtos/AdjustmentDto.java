@@ -1,7 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.dtos;
 
+import com.armaninvestment.parsparandreporterapplication.enums.AdjustmentType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,13 +18,12 @@ import java.time.LocalDate;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AdjustmentDto implements Serializable {
     private Long id;
-    @Size(max = 255)
-    private String adjustmentType;
-    @Size(max = 255)
+    private AdjustmentType adjustmentType;
     private String description;
     private Long quantity;
     private Double unitPrice;
     private Long invoiceId;
     private LocalDate adjustmentDate;
     private Long adjustmentNumber;
+    private Long yearId;
 }

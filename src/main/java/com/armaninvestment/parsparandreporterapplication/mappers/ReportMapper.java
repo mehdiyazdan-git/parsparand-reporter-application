@@ -7,6 +7,7 @@ import org.mapstruct.*;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING, uses = {ReportItemMapper.class})
@@ -22,6 +23,8 @@ public interface ReportMapper {
     }
 
     @Mapping(source = "year.id", target = "yearId")
+    @Mapping(expression = "java(getTotalPrice(report))", target = "totalPrice")
+    @Mapping(expression = "java(getTotalQuantity(report))", target = "totalQuantity")
     ReportDto toDto(Report report);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -47,4 +50,11 @@ public interface ReportMapper {
         JalaliDate jalaliDate = dateConverter.gregorianToJalali(date.getYear(), date.getMonthValue(), date.getDayOfMonth());
         return jalaliDate.getMonthPersian().getValue();
     }
+    default Double getTotalPrice(Report report){
+        return report.getTotalPrice();
+    }
+    default Long getTotalQuantity(Report report){
+        return report.getTotalQuantity();
+    }
+
 }

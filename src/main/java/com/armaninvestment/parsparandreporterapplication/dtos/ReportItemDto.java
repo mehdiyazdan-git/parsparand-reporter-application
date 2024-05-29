@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 /**
  * DTO for {@link com.armaninvestment.parsparandreporterapplication.entities.ReportItem}
@@ -16,8 +17,8 @@ import java.io.Serializable;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ReportItemDto implements Serializable {
     private Long id;
-    private Integer quantity;
-    private Long unitPrice;
+    private Long quantity;
+    private Double unitPrice;
     private Long customerId;
     private Long warehouseReceiptId;
 }

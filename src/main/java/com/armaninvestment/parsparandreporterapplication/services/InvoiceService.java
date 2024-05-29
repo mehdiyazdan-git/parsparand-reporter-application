@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,6 +52,26 @@ public class InvoiceService {
         Specification<Invoice> specification = InvoiceSpecification.bySearchCriteria(search);
         return invoiceRepository.findAll(specification, pageRequest)
                 .map(invoiceMapper::toDto);
+    }
+    public List<InvoiceSelectDto> searchInvoiceByDescriptionKeywords(String description,Integer yearId) {
+        try {
+            List<Object[]> objects = invoiceRepository.searchInvoiceByDescriptionKeywords(description, yearId);
+
+            List<InvoiceSelectDto> invoiceSelectDtos = new ArrayList<>();
+            for (Object[] object : objects){
+                InvoiceSelectDto invoiceSelectDto = new InvoiceSelectDto();
+                invoiceSelectDto.setId((Long) object[0]);
+                invoiceSelectDto.setName((String) object[1]);
+                invoiceSelectDtos.add(invoiceSelectDto);
+            }
+            invoiceSelectDtos.forEach(invoiceSelectDto -> System.out.println(invoiceSelectDto.getName()));
+
+            return invoiceSelectDtos;
+
+        }catch (Exception e){
+            e.printStackTrace();
+           throw new RuntimeException(e);
+        }
     }
 
     public InvoiceDto getInvoiceById(Long id) {

@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
+import com.armaninvestment.parsparandreporterapplication.entities.InvoiceSelectDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import com.armaninvestment.parsparandreporterapplication.services.InvoiceService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
+
 @CrossOrigin
 @RestController
 @RequestMapping("/api/invoices")
@@ -27,6 +30,19 @@ public class InvoiceController {
         Page<InvoiceDto> invoices = invoiceService.findInvoiceByCriteria(search, page, size, sortBy, order);
         return ResponseEntity.ok(invoices);
     }
+    @GetMapping("/select")
+    public ResponseEntity<?> searchInvoices(
+            @RequestParam String searchQuery,
+            @RequestParam Integer jalaliYear) {
+
+        try {
+            List<InvoiceSelectDto> invoices = invoiceService.searchInvoiceByDescriptionKeywords(searchQuery, jalaliYear);
+            return ResponseEntity.ok(invoices);
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body("در جستجو فاکتور خطایی رخ داده است");
+        }
+    }
+
     @GetMapping("/download-all-invoices.xlsx")
     public ResponseEntity<byte[]> downloadAllInvoicesExcel(InvoiceSearch search) throws IOException {
         byte[] excelData = invoiceService.exportInvoicesToExcel(search);

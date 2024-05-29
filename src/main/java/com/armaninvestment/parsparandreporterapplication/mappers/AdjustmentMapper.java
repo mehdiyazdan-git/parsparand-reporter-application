@@ -11,16 +11,19 @@ import java.time.LocalDate;
 
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AdjustmentMapper {
+    @Mapping(source = "yearId", target = "year.id")
     @Mapping(source = "invoiceId", target = "invoice.id")
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(adjustmentDto.getAdjustmentDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(adjustmentDto.getAdjustmentDate()))")
     Adjustment toEntity(AdjustmentDto adjustmentDto);
 
+    @Mapping(source = "year.id", target = "yearId")
     @Mapping(source = "invoice.id", target = "invoiceId")
     AdjustmentDto toDto(Adjustment adjustment);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(source = "invoiceId", target = "invoice.id")
+    @Mapping(source = "yearId", target = "year.id")
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(adjustmentDto.getAdjustmentDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(adjustmentDto.getAdjustmentDate()))")
     Adjustment partialUpdate(AdjustmentDto adjustmentDto, @MappingTarget Adjustment adjustment);

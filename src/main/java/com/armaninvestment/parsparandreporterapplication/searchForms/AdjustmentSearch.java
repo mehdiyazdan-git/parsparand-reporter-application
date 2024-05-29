@@ -27,5 +27,6 @@ public class AdjustmentSearch implements Serializable {
     private AdjustmentType adjustmentType;
     private Long invoiceNumber;
     private Integer jalaliYear;
+    private Long totalPrice;
 
 }

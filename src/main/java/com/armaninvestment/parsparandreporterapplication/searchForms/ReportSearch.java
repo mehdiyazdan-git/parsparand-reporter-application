@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -20,4 +21,6 @@ public class ReportSearch implements Serializable {
     private String reportExplanation;
     private LocalDate reportDate;
     private Integer JalaliYear;
+    private Double totalPrice;
+    private Long totalQuantity;
 }
