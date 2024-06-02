@@ -22,6 +22,8 @@ public class WarehouseReceiptSearch {
     private String warehouseReceiptDescription;
     private String customerName;
     private Integer jalaliYear;
+    private Long totalQuantity;
+    private Double totalPrice;
 
     @Override
     public String toString() {

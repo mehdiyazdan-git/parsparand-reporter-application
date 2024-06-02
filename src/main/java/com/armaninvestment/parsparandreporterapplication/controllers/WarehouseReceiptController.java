@@ -32,7 +32,7 @@ public class WarehouseReceiptController {
         if (search.getJalaliYear() == null) {
             search.setJalaliYear(warehouseReceiptService.getCurrentYear());
         }
-        Page<WarehouseReceiptDto> warehouseReceipts = warehouseReceiptService.findWarehouseReceiptByCriteria(search, page, size, sortBy, order);
+        Page<WarehouseReceiptDto> warehouseReceipts = warehouseReceiptService.findAll(page, size, sortBy, order, search);
         return ResponseEntity.ok(warehouseReceipts);
     }
 

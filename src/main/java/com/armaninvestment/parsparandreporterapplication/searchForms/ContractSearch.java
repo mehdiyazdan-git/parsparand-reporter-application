@@ -26,4 +26,10 @@ public class ContractSearch implements Serializable {
     private Double insuranceDeposit;
     private String customerName;
     private Integer jalaliYear;
+    private Long totalQuantity;
+    private Double totalPrice;
+    private Integer page;
+    private Integer size;
+    private String sortBy;
+    private String sortDirection;
 }

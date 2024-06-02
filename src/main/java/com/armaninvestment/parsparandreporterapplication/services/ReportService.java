@@ -3,25 +3,27 @@ package com.armaninvestment.parsparandreporterapplication.services;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportItemDto;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
+import com.armaninvestment.parsparandreporterapplication.mappers.ReportItemMapper;
 import com.armaninvestment.parsparandreporterapplication.mappers.ReportMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ReportSpecification;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
@@ -42,110 +44,90 @@ public class ReportService {
 
         @PersistenceContext
         private EntityManager entityManager;
+    private final ReportItemMapper reportItemMapper;
 
-    private Page<Report> findReportsFromCriteria(Pageable pageable,ReportSearch reportSearch) {
+
+    public Page<ReportDto> findAll(int page, int size, String sortBy, String sortDir, ReportSearch reportSearch) {
+
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> cq = cb.createTupleQuery();
+        Root<Report> root = cq.from(Report.class);
+        Join<Report, ReportItem> reportItemJoin = root.join("reportItems", JoinType.LEFT);
+
+
+        // Aggregation
+        Expression<Long> totalQuantity = cb.sum(reportItemJoin.get("quantity"));
+        Expression<Double> totalPrice = cb.sum(cb.prod(reportItemJoin.get("unitPrice"), reportItemJoin.get("quantity")));
+
+        // Select
+        cq.multiselect(
+                root.get("id").alias("id"),
+                root.get("reportDate").alias("reportDate"),
+                root.get("reportExplanation").alias("reportExplanation"),
+                root.get("year").get("id").alias("yearId"),
+                totalPrice.alias("totalPrice"),
+                totalQuantity.alias("totalQuantity")
+        );
+
+        // Specification
         Specification<Report> specification = new ReportSpecification(reportSearch);
+        cq.groupBy(root.get("id"), root.get("reportDate"), root.get("reportExplanation"), root.get("year").get("id"));
+        cq.where(specification.toPredicate(root, cq, cb));
 
-        CriteriaQuery<Report> query = cb.createQuery(Report.class);
-        Root<Report> root = query.from(Report.class);
-        query
-                .select(root)
-                .where(specification.toPredicate(root, query, cb));
+        // Sorting
+        switch (Objects.requireNonNull(sortBy)) {
+            case "totalPrice" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalPrice) : cb.desc(totalPrice));
+            case "totalQuantity" ->   cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalQuantity) : cb.desc(totalQuantity));
+            default -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get(sortBy)) : cb.desc(root.get(sortBy)));
+        }
 
-        List<Report> pagedData = paginateQuery(entityManager.createQuery(query), pageable).getResultList();
+        // Pagination
+        List<Tuple> tuples = entityManager.createQuery(cq)
+                .setFirstResult(page * size)
+                .setMaxResults(size)
+                .getResultList().stream().toList();
 
-        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
-        Root<Report> countRoot = countQuery.from(Report.class);
-        countQuery
-                .select(cb.count(countRoot))
-                .where(specification.toPredicate(countRoot, countQuery, cb));
-        var totalCount = entityManager.createQuery(countQuery).getSingleResult();
 
-        return new PageImpl<>(pagedData, pageable, totalCount);
+        // Convert to DTO
+        List<ReportDto> reportDtoList = tuples.stream().map(tuple -> new ReportDto(
+                tuple.get("id", Long.class),
+                tuple.get("reportDate", LocalDate.class),
+                tuple.get("reportExplanation", String.class),
+                tuple.get("yearId", Long.class),
+                tuple.get("totalPrice", Double.class),
+                tuple.get("totalQuantity", Long.class)
+        )).collect(Collectors.toList());
+
+        reportDtoList.forEach(reportDto -> {
+            Optional<Report> optionalReport = reportRepository.findById(reportDto.getId());
+            optionalReport.ifPresent(report -> reportDto
+                    .setReportItems(report.getReportItems().stream().map(reportItemMapper::toDto).collect(Collectors.toSet()))
+            );
+        });
+
+
+        // Calculate total pages
+        PageRequest pageRequest = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDir.equalsIgnoreCase("asc") ? Sort.Order.asc(Objects.requireNonNull(sortBy)) : Sort.Order.desc(Objects.requireNonNull(sortBy)))
+        );
+
+        return new PageImpl<>(reportDtoList, pageRequest, getCount(reportSearch));
     }
-    public static <T> TypedQuery<T> paginateQuery(TypedQuery<T> query, Pageable pageable) {
-        if (pageable.isPaged()) {
-            query.setFirstResult((int) pageable.getOffset());
-            query.setMaxResults(pageable.getPageSize());
-        }
-        return query;
+    private Long getCount(ReportSearch reportSearch){
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+        Root<Report> root = cq.from(Report.class);
+
+        cq.select(cb.count(root));
+
+        Specification<Report> specification = new ReportSpecification(reportSearch);
+        cq.where(specification.toPredicate(root, cq, cb));
+
+        return entityManager.createQuery(cq).getSingleResult();
     }
-
-
-        public Page<ReportDto> findReportByCriteria(ReportSearch searchCriteria, int page, int size, String sortBy, String order) {
-            Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
-            Pageable pageable = PageRequest.of(page, size, sort);
-            Specification<Report> specification = new ReportSpecification(searchCriteria);
-
-            // Calculate total elements
-            long totalElements = countReports(specification);
-
-            // Main query for results
-            List<Report> reports = getReports(specification, pageable, sortBy, order);
-            List<ReportDto> reportDtos = reports.stream().map(reportMapper::toDto).toList();
-
-            // Create Page object
-            return new PageImpl<>(reportDtos, pageable, totalElements);
-        }
-
-        private long countReports(Specification<Report> specification) {
-            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-            CriteriaQuery<Long> countQuery = criteriaBuilder.createQuery(Long.class);
-            Root<Report> countRoot = countQuery.from(Report.class);
-            countQuery.select(criteriaBuilder.countDistinct(countRoot));
-            Predicate predicate = specification.toPredicate(countRoot, countQuery, criteriaBuilder);
-            if (predicate != null) {
-                countQuery.where(predicate);
-            }
-            return entityManager.createQuery(countQuery).getSingleResult();
-        }
-
-        private List<Report> getReports(Specification<Report> specification, Pageable pageable, String sortBy, String order) {
-            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-            CriteriaQuery<Report> query = criteriaBuilder.createQuery(Report.class);
-            Root<Report> root = query.from(Report.class);
-            query.where(specification.toPredicate(root, query, criteriaBuilder));
-
-            // Custom sorting logic for totalPrice and totalQuantity
-            if ("totalPrice".equals(sortBy) || "totalQuantity".equals(sortBy)) {
-                Join<Report, ReportItem> reportItemJoin = root.join("reportItems", JoinType.LEFT);
-                if ("totalPrice".equals(sortBy)) {
-                    Expression<Double> totalPriceExpression = criteriaBuilder.sum(
-                            criteriaBuilder.toDouble(
-                                    criteriaBuilder.prod(
-                                            criteriaBuilder.toDouble(reportItemJoin.get("unitPrice")),
-                                            criteriaBuilder.toDouble(reportItemJoin.get("quantity"))
-                                    )
-                            )
-
-                    );
-                    if ("asc".equalsIgnoreCase(order)) {
-                        query.orderBy(criteriaBuilder.asc(totalPriceExpression));
-                    } else {
-                        query.orderBy(criteriaBuilder.desc(totalPriceExpression));
-                    }
-                } else if ("totalQuantity".equals(sortBy)) {
-                    Expression<Long> totalQuantityExpression = criteriaBuilder.sum(
-                            criteriaBuilder.toLong(reportItemJoin.get("quantity"))
-                    );
-                    if ("asc".equalsIgnoreCase(order)) {
-                        query.orderBy(criteriaBuilder.asc(totalQuantityExpression));
-                    } else {
-                        query.orderBy(criteriaBuilder.desc(totalQuantityExpression));
-                    }
-                }
-                query.groupBy(root.get("id")); // Group by report ID to aggregate totalPrice and totalQuantity correctly
-            } else {
-                query.orderBy(criteriaBuilder.asc(root.get(sortBy)));
-            }
-
-            TypedQuery<Report> typedQuery = entityManager.createQuery(query);
-            typedQuery.setFirstResult((int) pageable.getOffset());
-            typedQuery.setMaxResults(pageable.getPageSize());
-
-            return typedQuery.getResultList();
-        }
 
 
     public ReportDto createReport(ReportDto reportDto) {
@@ -186,12 +168,85 @@ public class ReportService {
         reportRepository.deleteById(id);
     }
 
-    public byte[] exportReportsToExcel() throws IOException {
-        List<ReportDto> reportDtos = reportRepository.findAll().stream()
-                .map(reportMapper::toDto)
-                .collect(Collectors.toList());
-        return ExcelDataExporter.exportData(reportDtos, ReportDto.class);
+    public byte[] exportReportsToExcel(ReportSearch search, boolean exportAll) {
+        List<Report> reports;
+
+        if (exportAll) {
+            // Fetch all filtered data
+            reports = getReportsBySearchCriteria(search);
+        } else {
+            // Fetch only the paginated result set
+            Page<ReportDto> paginatedReports = findAll(search.getPage(), search.getSize(), search.getSortBy(), search.getOrder(), search);
+            reports = paginatedReports.getContent().stream()
+                    .map(reportMapper::toEntity)
+                    .collect(Collectors.toList());
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Reports");
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            createHeaderCells(headerRow);
+
+            // Create data rows
+            int rowNum = 1;
+            for (Report report : reports) {
+                Row row = sheet.createRow(rowNum++);
+                populateReportRow(report, row);
+            }
+
+            // Adjust column widths
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Write the workbook to a byte array output stream
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export reports to Excel", e);
+        }
     }
+
+    private void createHeaderCells(Row headerRow) {
+        CellStyle headerCellStyle = headerRow.getSheet().getWorkbook().createCellStyle();
+        Font font = headerRow.getSheet().getWorkbook().createFont();
+        font.setBold(true);
+        headerCellStyle.setFont(font);
+
+        String[] headers = {
+                "Report Date", "Report Explanation", "Year ID", "Total Price", "Total Quantity"
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerCellStyle);
+        }
+    }
+
+    private void populateReportRow(Report report, Row row) {
+        int cellNum = 0;
+
+        row.createCell(cellNum++).setCellValue(report.getReportDate() != null ? report.getReportDate().toString() : "");
+        row.createCell(cellNum++).setCellValue(report.getReportExplanation() != null ? report.getReportExplanation() : "");
+        row.createCell(cellNum++).setCellValue(report.getYear() != null ? report.getYear().getId() : 0);
+
+        // Calculate total quantity and total price
+        long totalQuantity = report.getReportItems().stream().mapToLong(ReportItem::getQuantity).sum();
+        double totalPrice = report.getReportItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum();
+
+        row.createCell(cellNum++).setCellValue(totalPrice);
+        row.createCell(cellNum++).setCellValue(totalQuantity);
+    }
+
+    private List<Report> getReportsBySearchCriteria(ReportSearch search) {
+        Specification<Report> specification = new ReportSpecification(search);
+        return reportRepository.findAll(specification);
+    }
+
 
     public String importReportsFromExcel(MultipartFile file) throws IOException {
         Map<LocalDate, ReportDto> reportsMap = new HashMap<>();

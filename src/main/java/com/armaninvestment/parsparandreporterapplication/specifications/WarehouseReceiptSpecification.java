@@ -2,12 +2,11 @@ package com.armaninvestment.parsparandreporterapplication.specifications;
 
 
 import com.armaninvestment.parsparandreporterapplication.entities.Customer;
+import com.armaninvestment.parsparandreporterapplication.entities.ReportItem;
 import com.armaninvestment.parsparandreporterapplication.entities.WarehouseReceipt;
 import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
@@ -37,12 +36,27 @@ public class WarehouseReceiptSpecification {
                 predicates.add(criteriaBuilder.like(root.get("warehouseReceiptDescription"), "%" + searchCriteria.getWarehouseReceiptDescription() + "%"));
             }
             if (searchCriteria.getCustomerName() != null && !searchCriteria.getCustomerName().isEmpty()) {
-                Join<WarehouseReceipt, Customer> customerJoin = root.join("customer", JoinType.LEFT);
-                predicates.add(criteriaBuilder.like(customerJoin.get("name"), "%" + searchCriteria.getCustomerName() + "%"));
+                predicates.add(criteriaBuilder.like(root.get("customer").get("name"), "%" + searchCriteria.getCustomerName() + "%"));
             }
             if (searchCriteria.getJalaliYear() != null) {
                 Join<WarehouseReceipt, Year> yearJoin = root.join("year", JoinType.LEFT);
                 predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
+            }
+            if (searchCriteria.getTotalQuantity() != null) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<ReportItem> subRoot = subquery.from(ReportItem.class);
+                subquery.select(criteriaBuilder.sum(subRoot.get("quantity")));
+                subquery.where(criteriaBuilder.equal(subRoot.get("warehouseReceipt"), root));
+
+                predicates.add(criteriaBuilder.le(subquery, searchCriteria.getTotalQuantity()));
+            }
+            if (searchCriteria.getTotalPrice() != null) {
+                Subquery<Double> subquery = query.subquery(Double.class);
+                Root<ReportItem> subRoot = subquery.from(ReportItem.class);
+                subquery.select(criteriaBuilder.sum(criteriaBuilder.prod(subRoot.get("unitPrice"), subRoot.get("quantity"))));
+                subquery.where(criteriaBuilder.equal(subRoot.get("warehouseReceipt"), root));
+
+                predicates.add(criteriaBuilder.le(subquery, searchCriteria.getTotalPrice()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

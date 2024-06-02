@@ -2,6 +2,8 @@ package com.armaninvestment.parsparandreporterapplication.dtos;
 
 import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,7 +26,7 @@ public class InvoiceDto implements Serializable {
     private LocalDate dueDate;
     private Long invoiceNumber;
     private LocalDate issuedDate;
-    @Size(max = 20)
+    @Enumerated(EnumType.STRING)
     private SalesType salesType;
     private Long contractId;
     private String contractNumber;
@@ -35,6 +37,8 @@ public class InvoiceDto implements Serializable {
     private Long insuranceDeposit;
     private Long performanceBound;
     private Long yearId;
+    private Long totalQuantity;
+    private Double totalPrice;
 
     private Set<InvoiceItemDto> invoiceItems = new LinkedHashSet<>();
 }

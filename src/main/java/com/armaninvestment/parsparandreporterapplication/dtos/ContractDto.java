@@ -20,9 +20,7 @@ import java.util.Set;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ContractDto implements Serializable {
     private Long id;
-    @Size(max = 255)
     private String contractDescription;
-    @Size(max = 255)
     private String contractNumber;
     private LocalDate endDate;
     private LocalDate startDate;
@@ -32,5 +30,7 @@ public class ContractDto implements Serializable {
     private Double advancePayment;
     private Double insuranceDeposit;
     private Double performanceBond;
+    private Long totalQuantity;
+    private Double totalPrice;
     private Set<ContractItemDto> contractItems = new LinkedHashSet<>();
 }

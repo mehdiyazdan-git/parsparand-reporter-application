@@ -28,7 +28,7 @@ public class ContractController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
             ContractSearch search) {
-        Page<ContractDto> contracts = contractService.findContractByCriteria(search, page, size, sortBy, order);
+        Page<ContractDto> contracts = contractService.findAll(page, size, sortBy, order, search);
         return ResponseEntity.ok(contracts);
     }
     @GetMapping(path = "/select")

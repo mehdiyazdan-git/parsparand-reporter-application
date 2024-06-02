@@ -21,13 +21,13 @@ import java.util.Set;
 public class WarehouseReceiptDto implements Serializable {
     private Long id;
     private LocalDate warehouseReceiptDate;
-    @Size(max = 255)
     private String warehouseReceiptDescription;
     private Long warehouseReceiptNumber;
     private Long customerId;
     private String customerName;
     private Long yearId;
     private Long yearName;
-    private Integer jalaliYear;
+    private Long totalQuantity;
+    private Double totalPrice;
     private Set<WarehouseReceiptItemDto> warehouseReceiptItems = new LinkedHashSet<>();
 }

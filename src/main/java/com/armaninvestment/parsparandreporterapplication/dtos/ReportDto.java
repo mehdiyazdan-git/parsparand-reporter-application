@@ -1,13 +1,11 @@
 package com.armaninvestment.parsparandreporterapplication.dtos;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -22,10 +20,18 @@ import java.util.Set;
 public class ReportDto implements Serializable {
     private Long id;
     private LocalDate reportDate;
-    @Size(max = 255)
     private String reportExplanation;
     private Long yearId;
     private Double totalPrice;
     private Long totalQuantity;
     private Set<ReportItemDto> reportItems = new LinkedHashSet<>();
+
+    public ReportDto(Long id, LocalDate reportDate, String reportExplanation, Long yearId, Double totalPrice, Long totalQuantity) {
+        this.id = id;
+        this.reportDate = reportDate;
+        this.reportExplanation = reportExplanation;
+        this.yearId = yearId;
+        this.totalPrice = totalPrice;
+        this.totalQuantity = totalQuantity;
+    }
 }

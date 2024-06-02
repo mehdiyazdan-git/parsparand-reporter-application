@@ -4,9 +4,7 @@ package com.armaninvestment.parsparandreporterapplication.specifications;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
@@ -44,8 +42,23 @@ public class InvoiceSpecification {
                 predicates.add(criteriaBuilder.like(statusJoin.get("statusName"), "%" + searchCriteria.getInvoiceStatusName() + "%"));
             }
             if (searchCriteria.getJalaliYear() != null) {
-                Join<Invoice, Year> yearJoin = root.join("year", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
+                predicates.add(criteriaBuilder.equal(root.get("jalaliYear"), searchCriteria.getJalaliYear()));
+            }
+            if (searchCriteria.getTotalQuantity() != null) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<InvoiceItem> subRoot = subquery.from(InvoiceItem.class);
+                subquery.select(criteriaBuilder.sum(subRoot.get("quantity")));
+                subquery.where(criteriaBuilder.equal(subRoot.get("invoice"), root));
+
+                predicates.add(criteriaBuilder.le(subquery, searchCriteria.getTotalQuantity()));
+            }
+            if (searchCriteria.getTotalPrice() != null) {
+                Subquery<Double> subquery = query.subquery(Double.class);
+                Root<InvoiceItem> subRoot = subquery.from(InvoiceItem.class);
+                subquery.select(criteriaBuilder.sum(criteriaBuilder.prod(subRoot.get("unitPrice"), subRoot.get("quantity"))));
+                subquery.where(criteriaBuilder.equal(subRoot.get("invoice"), root));
+
+                predicates.add(criteriaBuilder.le(subquery, searchCriteria.getTotalPrice()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

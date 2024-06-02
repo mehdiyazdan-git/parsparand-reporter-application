@@ -51,6 +51,4 @@ public class Report{
                 .mapToLong(ReportItem::getQuantity)
                 .sum();
     }
-
-
 }

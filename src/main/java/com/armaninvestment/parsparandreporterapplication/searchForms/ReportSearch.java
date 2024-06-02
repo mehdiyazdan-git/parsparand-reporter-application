@@ -23,4 +23,8 @@ public class ReportSearch implements Serializable {
     private Integer JalaliYear;
     private Double totalPrice;
     private Long totalQuantity;
+    private Integer page;
+    private Integer size;
+    private String sortBy;
+    private String order;
 }

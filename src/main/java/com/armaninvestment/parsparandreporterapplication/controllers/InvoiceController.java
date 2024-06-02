@@ -26,8 +26,9 @@ public class InvoiceController {
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
-            InvoiceSearch search) {
-        Page<InvoiceDto> invoices = invoiceService.findInvoiceByCriteria(search, page, size, sortBy, order);
+            InvoiceSearch search
+    ) {
+        Page<InvoiceDto> invoices = invoiceService.findAll(page, size, sortBy, order, search);
         return ResponseEntity.ok(invoices);
     }
     @GetMapping("/select")
@@ -44,8 +45,11 @@ public class InvoiceController {
     }
 
     @GetMapping("/download-all-invoices.xlsx")
-    public ResponseEntity<byte[]> downloadAllInvoicesExcel(InvoiceSearch search) throws IOException {
-        byte[] excelData = invoiceService.exportInvoicesToExcel(search);
+    public ResponseEntity<byte[]> downloadAllInvoicesExcel(
+            InvoiceSearch search,
+            @RequestParam(defaultValue = "false") boolean exportAll
+    ) {
+        byte[] excelData = invoiceService.exportInvoicesToExcel(search,exportAll);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         headers.setContentDisposition(ContentDisposition.attachment()

@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
+import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ReportService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class ReportController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
             ReportSearch search) {
-        Page<ReportDto> reports = reportService.findReportByCriteria(search, page, size, sortBy, order);
+        Page<ReportDto> reports = reportService.findAll(page, size, sortBy, order, search);
         return ResponseEntity.ok(reports);
     }
 
@@ -51,10 +52,21 @@ public class ReportController {
     }
 
     @GetMapping("/download-all-reports.xlsx")
-    public ResponseEntity<byte[]> downloadAllReportsExcel() throws IOException {
-        byte[] excelData = reportService.exportReportsToExcel();
+    public ResponseEntity<byte[]> downloadAllReportsExcel(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "ASC") String order,
+            ReportSearch search,
+            @RequestParam(defaultValue = "true") boolean exportAll
+    ) {
+        search.setPage(page);
+        search.setSize(size);
+        search.setSortBy(sortBy);
+        search.setOrder(order);
+        byte[] excelData = reportService.exportReportsToExcel(search,exportAll);
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentType(MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         headers.setContentDisposition(ContentDisposition.attachment()
                 .filename("all_reports.xlsx")
                 .build());
