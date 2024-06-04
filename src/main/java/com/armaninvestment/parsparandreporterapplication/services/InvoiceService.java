@@ -417,7 +417,7 @@ public class InvoiceService {
             invoices = getInvoicesBySearchCriteria(search);
         } else {
             // Fetch only the paginated result set
-            Page<InvoiceDto> paginatedInvoices = findAll(search.getPage(), search.getSize(), search.getSortBy(), search.getSortDirection(), search);
+            Page<InvoiceDto> paginatedInvoices = findAll(search.getPage(), search.getSize(), search.getSortBy(), search.getOrder(), search);
             invoices = paginatedInvoices.getContent().stream()
                     .map(invoiceMapper::toEntity)
                     .collect(Collectors.toList());
@@ -460,7 +460,7 @@ public class InvoiceService {
         String[] headers = {
                 "Invoice Number", "Issued Date", "Due Date", "Sales Type", "Contract Number",
                 "Customer Code", "Advanced Payment", "Insurance Deposit", "Performance Bound",
-                "Year", "Status", "Total Quantity", "Total Price"
+                "Total Quantity", "Total Price"
         };
 
         for (int i = 0; i < headers.length; i++) {
@@ -482,8 +482,6 @@ public class InvoiceService {
         row.createCell(cellNum++).setCellValue(invoice.getAdvancedPayment() != null ? invoice.getAdvancedPayment() : 0);
         row.createCell(cellNum++).setCellValue(invoice.getInsuranceDeposit() != null ? invoice.getInsuranceDeposit() : 0);
         row.createCell(cellNum++).setCellValue(invoice.getPerformanceBound() != null ? invoice.getPerformanceBound() : 0);
-        row.createCell(cellNum++).setCellValue(invoice.getYear() != null ? invoice.getYear().getName() : 0);
-        row.createCell(cellNum++).setCellValue(invoice.getInvoiceStatus() != null ? invoice.getInvoiceStatus().getName() : "");
 
         // Calculate total quantity and total price
         long totalQuantity = invoice.getInvoiceItems().stream().mapToLong(InvoiceItem::getQuantity).sum();

@@ -33,5 +33,5 @@ public class InvoiceSearch implements Serializable {
     private Integer page;
     private Integer size;
     private String sortBy;
-    private String sortDirection;
+    private String order;
 }

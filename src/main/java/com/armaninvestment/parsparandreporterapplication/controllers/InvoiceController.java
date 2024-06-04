@@ -46,9 +46,17 @@ public class InvoiceController {
 
     @GetMapping("/download-all-invoices.xlsx")
     public ResponseEntity<byte[]> downloadAllInvoicesExcel(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "ASC") String order,
             InvoiceSearch search,
             @RequestParam(defaultValue = "false") boolean exportAll
     ) {
+        search.setPage(page);
+        search.setSize(size);
+        search.setSortBy(sortBy);
+        search.setOrder(order);
         byte[] excelData = invoiceService.exportInvoicesToExcel(search,exportAll);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
