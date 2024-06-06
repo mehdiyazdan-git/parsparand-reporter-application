@@ -1,7 +1,9 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
+import com.armaninvestment.parsparandreporterapplication.dtos.CompanyReportDTO;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
-import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
+import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
+import com.armaninvestment.parsparandreporterapplication.repositories.ReportRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ReportService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @CrossOrigin
 @RestController
@@ -18,6 +21,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class ReportController {
     private final ReportService reportService;
+    private final ReportRepository reportRepository;
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ReportDto>> getAllReportsByCriteria(
@@ -87,5 +91,32 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/by-product/{year}/{month}/{productType}")
+    public ResponseEntity<List<CompanyReportDTO>> getMonthlyReportByProduct(
+            @PathVariable Integer year,
+            @PathVariable Integer month,
+            @PathVariable String productType) {
+
+        List<Object[]> resultSet = reportRepository.getReport(year, month, productType);
+        List<CompanyReportDTO> list = resultSet.stream().map(obj -> {
+            CompanyReportDTO dto = new CompanyReportDTO();
+            dto.setId((Long) obj[0]);
+            dto.setCustomerName((String) obj[1]);
+            dto.setTotalQuantity((Long) obj[2]);
+            dto.setTotalAmount((Long) obj[3]);
+            dto.setCumulativeTotalQuantity((Long) obj[4]);
+            dto.setCumulativeTotalAmount((Long) obj[5]);
+            dto.setAvgUnitPrice((Long) obj[6]);
+            return dto;
+        }).toList();
+        return ResponseEntity.ok(list);
+    }
+    @GetMapping(path = "/sales-by-year/{yearName}/{productType}")
+    public ResponseEntity<List<SalesByYearGroupByMonth>> getSalesByYearGroupByMonth(
+            @PathVariable("yearName") Short yearName,
+            @PathVariable("productType") String productType) {
+        return ResponseEntity.ok(reportService.findSalesByYearGroupByMonth(yearName, productType));
     }
 }

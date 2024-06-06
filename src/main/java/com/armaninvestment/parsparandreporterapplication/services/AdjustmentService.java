@@ -2,16 +2,21 @@ package com.armaninvestment.parsparandreporterapplication.services;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.AdjustmentDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Adjustment;
+import com.armaninvestment.parsparandreporterapplication.entities.Invoice;
 import com.armaninvestment.parsparandreporterapplication.entities.Year;
+import com.armaninvestment.parsparandreporterapplication.enums.AdjustmentType;
 import com.armaninvestment.parsparandreporterapplication.mappers.AdjustmentMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.AdjustmentRepository;
+import com.armaninvestment.parsparandreporterapplication.repositories.InvoiceRepository;
 import com.armaninvestment.parsparandreporterapplication.repositories.YearRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.AdjustmentSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.AdjustmentSpecification;
+import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataImporter;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -19,7 +24,11 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -30,6 +39,7 @@ public class AdjustmentService {
     private final AdjustmentRepository adjustmentRepository;
     private final AdjustmentMapper adjustmentMapper;
     private final YearRepository yearRepository;
+    private final InvoiceRepository invoiceRepository;
 
     public Page<AdjustmentDto> findAdjustmentByCriteria(AdjustmentSearch search, int page, int size, String sortBy, String order) {
         Sort sort;
@@ -102,20 +112,198 @@ public class AdjustmentService {
         adjustmentRepository.deleteById(id);
     }
 
-    public String importAdjustmentsFromExcel(MultipartFile file) throws IOException {
-        List<AdjustmentDto> adjustmentDtos = ExcelDataImporter.importData(file, AdjustmentDto.class);
-        List<Adjustment> adjustments = adjustmentDtos.stream()
-                .map(adjustmentMapper::toEntity)
-                .collect(Collectors.toList());
 
-        adjustmentRepository.saveAll(adjustments);
-        return adjustments.size() + " سند تعدیل با موفقیت وارد شدند.";
+    public String importAdjustmentsFromExcel(MultipartFile file) throws IOException {
+        List<AdjustmentDto> adjustmentDtoList = new ArrayList<>();
+
+        try (InputStream inputStream = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(inputStream)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+            Iterator<Row> rows = sheet.iterator();
+
+            // Skip header row
+            if (rows.hasNext()) {
+                rows.next();
+            }
+
+            while (rows.hasNext()) {
+                Row row = rows.next();
+                AdjustmentDto adjustmentDto = new AdjustmentDto();
+
+                if (row.getCell(0) != null) {
+                    adjustmentDto.setAdjustmentType(AdjustmentType.fromValue(row.getCell(0).getStringCellValue()));
+                }
+
+                if (row.getCell(1) != null) {
+                    adjustmentDto.setDescription(row.getCell(1).getStringCellValue());
+                }
+
+                if (row.getCell(2) != null) {
+                    adjustmentDto.setQuantity((long) row.getCell(2).getNumericCellValue());
+                }
+
+                if (row.getCell(3) != null) {
+                    adjustmentDto.setUnitPrice(row.getCell(3).getNumericCellValue());
+                }
+
+                if (row.getCell(4) != null) {
+                    Long invoiceNumber = (long) row.getCell(4).getNumericCellValue();
+                    Invoice invoice = invoiceRepository.findByInvoiceNumber(invoiceNumber).orElseThrow(() -> new IllegalStateException("فاکتور با این شناسه یافت نشد."));
+                    adjustmentDto.setInvoiceId(invoice.getId());
+                }
+
+                if (row.getCell(5) != null) {
+                    adjustmentDto.setAdjustmentDate(DateConvertor.convertJalaliToGregorian(row.getCell(5).getStringCellValue()));
+                }
+
+                if (row.getCell(6) != null) {
+                    adjustmentDto.setAdjustmentNumber((long) row.getCell(6).getNumericCellValue());
+                }
+                Year year = yearRepository
+                        .findByName(Long.valueOf(row.getCell(5)
+                                .getStringCellValue().substring(0, 4))).orElseThrow(() -> new IllegalStateException("سال با این شناسه یافت نشد."));
+                adjustmentDto.setYearId(year.getId());
+                adjustmentDtoList.add(adjustmentDto);
+            }
+        }
+
+        List<Adjustment> list = adjustmentDtoList.stream().map(adjustmentDto -> {
+            Adjustment adjustment = adjustmentMapper.toEntity(adjustmentDto);
+            Year year = yearRepository.findById(adjustmentDto.getYearId()).orElseThrow(() -> new IllegalStateException("سال با این شناسه یافت نشد."));
+            Invoice invoice = invoiceRepository.findById(adjustmentDto.getInvoiceId()).orElseThrow(() -> new IllegalStateException("فاکتور با این شناسه یافت نشد."));
+            adjustment.setYear(year);
+            year.getAdjustments().add(adjustment);
+            adjustment.setInvoice(invoice);
+            invoice.getAdjustments().add(adjustment);
+            return adjustment;
+        }
+
+        ).toList();
+
+        adjustmentRepository.saveAll(list);
+        return "Imported " + adjustmentDtoList.size() + " adjustment records successfully.";
     }
+
 
     public byte[] exportAdjustmentsToExcel() throws IOException {
         List<AdjustmentDto> adjustmentDtos = adjustmentRepository.findAll().stream()
                 .map(adjustmentMapper::toDto)
-                .collect(Collectors.toList());
-        return ExcelDataExporter.exportData(adjustmentDtos, AdjustmentDto.class);
+                .toList();
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Adjustments");
+            // set direction to rtl
+            sheet.setRightToLeft(true);
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            createHeaderCells(headerRow);
+
+            // Initialize totals
+            long totalQuantity = 0;
+            double totalPrice = 0;
+
+            // Create data rows
+            int rowNum = 1;
+            for (AdjustmentDto adjustment : adjustmentDtos) {
+                Row row = sheet.createRow(rowNum++);
+                populateAdjustmentRow(adjustment, row);
+
+                // Sum totals
+                totalQuantity += adjustment.getQuantity() != null ? adjustment.getQuantity() : 0;
+                totalPrice += adjustment.getUnitPrice() != null ? (adjustment.getUnitPrice() * (adjustment.getQuantity() != null ? adjustment.getQuantity() : 0)) : 0;
+            }
+
+            // Create subtotal row
+            Row subtotalRow = sheet.createRow(rowNum);
+            createSubtotalRow(subtotalRow, totalQuantity, totalPrice);
+
+            // Adjust column widths
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Write the workbook to a byte array output stream
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export adjustments to Excel", e);
+        }
     }
+
+    private void createHeaderCells(Row headerRow) {
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle headerCellStyle = cellStyleHelper.getHeaderCellStyle(headerRow.getSheet().getWorkbook());
+
+        String[] headers = {
+                "شناسه تعدیل", "نوع تعدیل", "شرح", "تعداد", "قیمت واحد",
+                "شناسه فاکتور", "تاریخ تعدیل", "شماره تعدیل", "شناسه سال"
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerCellStyle);
+        }
+    }
+
+    private void populateAdjustmentRow(AdjustmentDto adjustment, Row row) {
+        int cellNum = 0;
+
+        row.createCell(cellNum++).setCellValue(adjustment.getId() != null ? adjustment.getId() : 0);
+        row.createCell(cellNum++).setCellValue(adjustment.getAdjustmentType() != null ? adjustment.getAdjustmentType().toString() : "");
+        row.createCell(cellNum++).setCellValue(adjustment.getDescription() != null ? adjustment.getDescription() : "");
+        row.createCell(cellNum++).setCellValue(adjustment.getQuantity() != null ? adjustment.getQuantity() : 0);
+        row.createCell(cellNum++).setCellValue(adjustment.getUnitPrice() != null ? adjustment.getUnitPrice() : 0.0);
+        row.createCell(cellNum++).setCellValue(adjustment.getInvoiceId() != null ? adjustment.getInvoiceId() : 0);
+        row.createCell(cellNum++).setCellValue(adjustment.getAdjustmentDate() != null ? DateConvertor.convertGregorianToJalali(adjustment.getAdjustmentDate()) : "");
+        row.createCell(cellNum++).setCellValue(adjustment.getAdjustmentNumber() != null ? adjustment.getAdjustmentNumber() : 0);
+        row.createCell(cellNum++).setCellValue(adjustment.getYearId() != null ? adjustment.getYearId() : 0);
+
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle defaultCellStyle = cellStyleHelper.getCellStyle(row.getSheet().getWorkbook());
+        CellStyle monatoryCellStyle = cellStyleHelper.getMonatoryCellStyle(row.getSheet().getWorkbook());
+
+        for (int i = 0; i < cellNum; i++) {
+            Cell cell = row.getCell(i);
+            cell.setCellStyle(defaultCellStyle);
+        }
+        row.getCell(4).setCellStyle(monatoryCellStyle);
+    }
+
+    private void createSubtotalRow(Row subtotalRow, long totalQuantity, double totalPrice) {
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle footerCellStyle = cellStyleHelper.getFooterCellStyle(subtotalRow.getSheet().getWorkbook());
+
+        int cellNum = 0;
+        subtotalRow.createCell(cellNum++).setCellValue("جمع کل"); // Subtotal label
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue(totalQuantity);
+        subtotalRow.createCell(cellNum++).setCellValue(totalPrice);
+
+        // Merge cells [0, 5]
+        subtotalRow.getSheet().addMergedRegion(new CellRangeAddress(subtotalRow.getRowNum(), subtotalRow.getRowNum(), 0, 5));
+
+        for (int i = 0; i < subtotalRow.getLastCellNum(); i++) {
+            Cell cell = subtotalRow.getCell(i);
+            if (cell != null) {
+                cell.setCellStyle(footerCellStyle);
+            }
+        }
+        subtotalRow.getCell(6).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(7).setCellStyle(footerCellStyle);
+    }
+
+    private List<AdjustmentDto> findAll() {
+        return adjustmentRepository.findAll().stream()
+                .map(adjustmentMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
 }

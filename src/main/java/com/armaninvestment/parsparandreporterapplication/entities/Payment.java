@@ -1,5 +1,8 @@
 package com.armaninvestment.parsparandreporterapplication.entities;
 
+import com.armaninvestment.parsparandreporterapplication.enums.PaymentSubject;
+import com.armaninvestment.parsparandreporterapplication.enums.PaymentSubjectConverter;
+import com.armaninvestment.parsparandreporterapplication.enums.ProductTypeConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -21,28 +24,27 @@ public class Payment{
     private LocalDate paymentDate;
 
     @Size(max = 255)
-    @Column(name = "payment_descryption")
-    private String paymentDescryption;
+    @Column(name = "payment_description")
+    private String paymentDescription;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST})
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST})
     @JoinColumn(name = "year_id")
     private Year year;
 
     @Column(name = "payment_amount")
-    private Long paymentAmount;
+    private Double paymentAmount;
 
-    @Size(max = 255)
+    @Convert(converter = PaymentSubjectConverter.class)
     @Column(name = "payment_subject")
-    private String paymentSubject;
+    private PaymentSubject paymentSubject;
 
     @Column(name = "jalali_year")
     private Integer jalaliYear;
 
     @Column(name = "month")
     private Integer month;
-
 }

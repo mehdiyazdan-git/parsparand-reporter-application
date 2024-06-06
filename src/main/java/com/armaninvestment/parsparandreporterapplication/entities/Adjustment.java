@@ -26,12 +26,12 @@ public class Adjustment{
     private String description;
 
     @Column(name = "quantity")
-    private Long quantity;
+    private Integer quantity;
 
     @Column(name = "unit_price")
     private Double unitPrice;
 
-    @ManyToOne(fetch = FetchType.LAZY,cascade = {CascadeType.MERGE})
+    @ManyToOne(fetch = FetchType.EAGER,cascade = {CascadeType.MERGE})
     @JoinColumn(name = "invoice_id")
     private Invoice invoice;
 

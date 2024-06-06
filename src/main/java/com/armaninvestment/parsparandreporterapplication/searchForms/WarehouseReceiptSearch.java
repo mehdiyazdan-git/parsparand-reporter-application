@@ -24,16 +24,10 @@ public class WarehouseReceiptSearch {
     private Integer jalaliYear;
     private Long totalQuantity;
     private Double totalPrice;
+    private Integer page;
+    private Integer size;
+    private String sortBy;
+    private String order;
 
-    @Override
-    public String toString() {
-        return "WarehouseReceiptSearch{" +
-               "id=" + id +
-               ", warehouseReceiptNumber=" + warehouseReceiptNumber +
-               ", warehouseReceiptDate=" + warehouseReceiptDate +
-               ", warehouseReceiptDescription='" + warehouseReceiptDescription + '\'' +
-               ", customerName='" + customerName + '\'' +
-               ", jalaliYear=" + jalaliYear +
-               '}';
-    }
+
 }

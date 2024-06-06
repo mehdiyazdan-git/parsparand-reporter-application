@@ -30,31 +30,62 @@ public class ReturnedController {
     }
 
     @GetMapping(path = {"/{id}"})
-    public ResponseEntity<ReturnedDto> getReturnedById(@PathVariable Long id){
-        return ResponseEntity.ok(returnedService.getReturnedById(id));
+    public ResponseEntity<?> getReturnedById(@PathVariable Long id){
+        try {
+            return ResponseEntity.ok(returnedService.getReturnedById(id));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 
     @PostMapping(path = {"/", ""})
-    public ResponseEntity<ReturnedDto> createReturned(@RequestBody ReturnedDto returnedDto){
-        return ResponseEntity.ok(returnedService.createReturned(returnedDto));
+    public ResponseEntity<?> createReturned(@RequestBody ReturnedDto returnedDto){
+        try {
+            return ResponseEntity.ok(returnedService.createReturned(returnedDto));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @PutMapping(path = {"/{id}"})
-    public ResponseEntity<ReturnedDto> updateReturned(@PathVariable Long id, @RequestBody ReturnedDto returnedDto){
-        return ResponseEntity.ok(returnedService.updateReturned(id, returnedDto));
+    public ResponseEntity<?> updateReturned(@PathVariable Long id, @RequestBody ReturnedDto returnedDto){
+        try {
+            return ResponseEntity.ok(returnedService.updateReturned(id, returnedDto));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @DeleteMapping(path = {"/{id}"})
-    public ResponseEntity<Void> deleteReturned(@PathVariable Long id){
-        returnedService.deleteReturned(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteReturned(@PathVariable Long id){
+        try {
+            returnedService.deleteReturned(id);
+            return ResponseEntity.noContent().build();
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @GetMapping("/download-all-returneds.xlsx")
-    public ResponseEntity<byte[]> downloadAllReturnedsExcel() throws IOException {
-        byte[] excelData = returnedService.exportReturnedsToExcel();
+    public ResponseEntity<byte[]> downloadAllReturnedsExcel(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "ASC") String order,
+            ReturnedSearch search,
+            @RequestParam(defaultValue = "false") boolean exportAll
+    ) throws IOException {
+        search.setPage(page);
+        search.setSize(size);
+        search.setSortBy(sortBy);
+        search.setOrder(order);
+        byte[] excelData = returnedService.exportReturnedsToExcel(search, exportAll);
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentType(MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         headers.setContentDisposition(ContentDisposition.attachment()
                 .filename("all_returneds.xlsx")
                 .build());

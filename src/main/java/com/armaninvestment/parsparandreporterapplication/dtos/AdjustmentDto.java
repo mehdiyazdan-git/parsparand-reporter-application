@@ -22,8 +22,12 @@ public class AdjustmentDto implements Serializable {
     private String description;
     private Long quantity;
     private Double unitPrice;
+    private Double totalPrice;
     private Long invoiceId;
+    private Long invoiceNumber;
     private LocalDate adjustmentDate;
     private Long adjustmentNumber;
     private Long yearId;
+
+    // id, adjustmentType, description, quantity, unitPrice, invoiceId, adjustmentDate, adjustmentNumber, yearId
 }

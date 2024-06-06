@@ -9,12 +9,15 @@ import com.armaninvestment.parsparandreporterapplication.mappers.InvoiceMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.InvoiceSpecification;
+import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
+import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -425,17 +428,36 @@ public class InvoiceService {
 
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Invoices");
+            sheet.setRightToLeft(true);
 
             // Create header row
             Row headerRow = sheet.createRow(0);
             createHeaderCells(headerRow);
+
+            // Initialize totals
+            long totalQuantity = 0;
+            double totalPrice = 0;
+            double totalAdvancedPayment = 0;
+            double totalInsuranceDeposit = 0;
+            double totalPerformanceBound = 0;
 
             // Create data rows
             int rowNum = 1;
             for (Invoice invoice : invoices) {
                 Row row = sheet.createRow(rowNum++);
                 populateInvoiceRow(invoice, row);
+
+                // Sum totals
+                totalQuantity += invoice.getInvoiceItems().stream().mapToLong(InvoiceItem::getQuantity).sum();
+                totalPrice += invoice.getInvoiceItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum();
+                totalAdvancedPayment += invoice.getAdvancedPayment() != null ? invoice.getAdvancedPayment() : 0;
+                totalInsuranceDeposit += invoice.getInsuranceDeposit() != null ? invoice.getInsuranceDeposit() : 0;
+                totalPerformanceBound += invoice.getPerformanceBound() != null ? invoice.getPerformanceBound() : 0;
             }
+
+            // Create subtotal row
+            Row subtotalRow = sheet.createRow(rowNum);
+            createSubtotalRow(subtotalRow, totalQuantity, totalPrice, totalAdvancedPayment, totalInsuranceDeposit, totalPerformanceBound);
 
             // Adjust column widths
             for (int i = 0; i < headerRow.getLastCellNum(); i++) {
@@ -451,16 +473,49 @@ public class InvoiceService {
         }
     }
 
+    private void createSubtotalRow(Row subtotalRow, long totalQuantity, double totalPrice, double totalAdvancedPayment, double totalInsuranceDeposit, double totalPerformanceBound) {
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle footerCellStyle = cellStyleHelper.getFooterCellStyle(subtotalRow.getSheet().getWorkbook());
+
+        int cellNum = 0;
+        subtotalRow.createCell(cellNum++).setCellValue("جمع کل"); // Subtotal label
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue(totalAdvancedPayment);
+        subtotalRow.createCell(cellNum++).setCellValue(totalInsuranceDeposit);
+        subtotalRow.createCell(cellNum++).setCellValue(totalPerformanceBound);
+        subtotalRow.createCell(cellNum++).setCellValue(totalQuantity);
+        subtotalRow.createCell(cellNum++).setCellValue(totalPrice);
+
+        // Merge cells [0, 5]
+        subtotalRow.getSheet().addMergedRegion(new CellRangeAddress(subtotalRow.getRowNum(), subtotalRow.getRowNum(), 0, 5));
+
+        for (int i = 0; i < subtotalRow.getLastCellNum(); i++) {
+            Cell cell = subtotalRow.getCell(i);
+            if (cell != null) {
+                cell.setCellStyle(footerCellStyle);
+            }
+        }
+        subtotalRow.getCell(7).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(8).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(9).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(10).setCellStyle(footerCellStyle);
+    }
+
+// Other existing methods...
+
+
     private void createHeaderCells(Row headerRow) {
-        CellStyle headerCellStyle = headerRow.getSheet().getWorkbook().createCellStyle();
-        Font font = headerRow.getSheet().getWorkbook().createFont();
-        font.setBold(true);
-        headerCellStyle.setFont(font);
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle headerCellStyle = cellStyleHelper.getHeaderCellStyle(headerRow.getSheet().getWorkbook());
 
         String[] headers = {
-                "Invoice Number", "Issued Date", "Due Date", "Sales Type", "Contract Number",
-                "Customer Code", "Advanced Payment", "Insurance Deposit", "Performance Bound",
-                "Total Quantity", "Total Price"
+                "شماره فاکتور", "تاریخ صدور", "تاریخ پیگیری", "نوع فروش", "شماره قرارداد",
+                "کد مشتری", "پیش پرداخت", "سپرده بیمه", "حسن انجام کار",
+                "تعداد", "مبلغ"
         };
 
         for (int i = 0; i < headers.length; i++) {
@@ -469,14 +524,21 @@ public class InvoiceService {
             cell.setCellStyle(headerCellStyle);
         }
     }
+    private String convertToPersianCaption(String salesType ){
+        return switch (salesType) {
+            case "CASH_SALES" -> "فروش نقدی";
+            case "CONTRACTUAL_SALES" -> "فروش قراردادی";
+            default -> "نامشخص";
+        };
+    }
 
     private void populateInvoiceRow(Invoice invoice, Row row) {
         int cellNum = 0;
 
         row.createCell(cellNum++).setCellValue(invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : 0);
-        row.createCell(cellNum++).setCellValue(invoice.getIssuedDate() != null ? invoice.getIssuedDate().toString() : "");
-        row.createCell(cellNum++).setCellValue(invoice.getDueDate() != null ? invoice.getDueDate().toString() : "");
-        row.createCell(cellNum++).setCellValue(invoice.getSalesType() != null ? invoice.getSalesType().name() : "");
+        row.createCell(cellNum++).setCellValue(invoice.getIssuedDate() != null ? DateConvertor.convertGregorianToJalali(invoice.getIssuedDate()) : "");
+        row.createCell(cellNum++).setCellValue(invoice.getDueDate() != null ? DateConvertor.convertGregorianToJalali(invoice.getDueDate()) : "");
+        row.createCell(cellNum++).setCellValue(invoice.getSalesType() != null ? convertToPersianCaption(invoice.getSalesType().name()) : "");
         row.createCell(cellNum++).setCellValue(invoice.getContract() != null ? invoice.getContract().getContractNumber() : "");
         row.createCell(cellNum++).setCellValue(invoice.getCustomer() != null ? invoice.getCustomer().getCustomerCode() : "");
         row.createCell(cellNum++).setCellValue(invoice.getAdvancedPayment() != null ? invoice.getAdvancedPayment() : 0);
@@ -489,6 +551,22 @@ public class InvoiceService {
 
         row.createCell(cellNum++).setCellValue(totalQuantity);
         row.createCell(cellNum++).setCellValue(totalPrice);
+
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle defaultCellStyle = cellStyleHelper.getCellStyle(row.getSheet().getWorkbook());
+        CellStyle monatoryCellStyle = cellStyleHelper.getMonatoryCellStyle(row.getSheet().getWorkbook());
+
+
+        for (int i = 0; i < row.getLastCellNum(); i++) {
+            Cell cell = row.getCell(i);
+            if (cell != null) {
+                cell.setCellStyle(defaultCellStyle);
+            }
+        }
+        row.getCell(7).setCellStyle(monatoryCellStyle);
+        row.getCell(8).setCellStyle(monatoryCellStyle);
+        row.getCell(9).setCellStyle(monatoryCellStyle);
+        row.getCell(10).setCellStyle(monatoryCellStyle);
     }
 
     private List<Invoice> getInvoicesBySearchCriteria(InvoiceSearch search) {

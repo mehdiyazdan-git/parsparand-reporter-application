@@ -25,4 +25,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long>, JpaSp
 
     @Query("select c from Contract c where c.contractNumber = :contractNumber")
     Contract findByContractNumber(@Param("contractNumber") String contractNumber);
+
+    @Query(value = "SELECT c FROM Contract c WHERE c.customer.id = :customerId ORDER BY c.id DESC limit 1")
+    Optional<Contract> findLastContractByCustomerId(@Param("customerId") Long customerId);
 }

@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
+import com.armaninvestment.parsparandreporterapplication.dtos.ClientSummaryResult;
 import com.armaninvestment.parsparandreporterapplication.dtos.CustomerDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.searchForms.CustomerSearch;
@@ -40,6 +41,10 @@ public class CustomerController {
             @RequestParam(required = false) String searchQuery) {
         List<CustomerSelect> customers = customerService.findAllCustomerSelect(searchQuery);
         return ResponseEntity.ok(customers);
+    }
+    @GetMapping("/{customerId}/summary")
+    public ClientSummaryResult getClientSummary(@PathVariable Long customerId) {
+        return customerService.getClientSummaryByCustomerId(customerId);
     }
 
     @GetMapping(path = {"/{id}"})

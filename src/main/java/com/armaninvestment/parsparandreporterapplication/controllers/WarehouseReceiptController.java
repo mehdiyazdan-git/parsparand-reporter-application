@@ -76,8 +76,23 @@ public class WarehouseReceiptController {
     }
 
     @GetMapping("/download-all-warehouse-receipts.xlsx")
-    public ResponseEntity<byte[]> downloadAllWarehouseReceiptsExcel(WarehouseReceiptSearch warehouseReceiptSearch) {
-        byte[] excelData = warehouseReceiptService.exportWarehouseReceiptsToExcel(warehouseReceiptSearch);
+    public ResponseEntity<byte[]> downloadAllWarehouseReceiptsExcel(
+            @RequestParam(defaultValue = "0", required = false) int page,
+            @RequestParam(defaultValue = "5", required = false) int size,
+            @RequestParam(defaultValue = "id", required = false) String sortBy,
+            @RequestParam(defaultValue = "ASC", required = false) String order,
+            @RequestParam(defaultValue = "false", required = false) boolean exportAll,
+            WarehouseReceiptSearch search
+    ) throws IllegalAccessException {
+        boolean _exportAll = Boolean.parseBoolean(String.valueOf(exportAll));
+        int _size = Integer.parseInt(String.valueOf(size));
+        int _page = Integer.parseInt(String.valueOf(page));
+        search.setPage(_page);
+        search.setSize(_size);
+        search.setSortBy(sortBy);
+        search.setOrder(order);
+
+        byte[] excelData = warehouseReceiptService.exportWarehouseReceiptsToExcel(search, _exportAll);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDisposition(ContentDisposition.attachment()

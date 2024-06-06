@@ -29,31 +29,51 @@ public class AdjustmentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AdjustmentDto> getAdjustmentById(@PathVariable Long id) {
-        return ResponseEntity.ok(adjustmentService.getAdjustmentById(id));
+    public ResponseEntity<?> getAdjustmentById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(adjustmentService.getAdjustmentById(id));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 
     @PostMapping
-    public ResponseEntity<AdjustmentDto> createAdjustment(@RequestBody AdjustmentDto adjustmentDto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(adjustmentService.createAdjustment(adjustmentDto));
+    public ResponseEntity<?> createAdjustment(@RequestBody AdjustmentDto adjustmentDto) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(adjustmentService.createAdjustment(adjustmentDto));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<AdjustmentDto> updateAdjustment(@PathVariable Long id, @RequestBody AdjustmentDto adjustmentDto) {
-        return ResponseEntity.ok(adjustmentService.updateAdjustment(id, adjustmentDto));
+    public ResponseEntity<?> updateAdjustment(@PathVariable Long id, @RequestBody AdjustmentDto adjustmentDto) {
+        try {
+            return ResponseEntity.ok(adjustmentService.updateAdjustment(id, adjustmentDto));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAdjustment(@PathVariable Long id) {
-        adjustmentService.deleteAdjustment(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteAdjustment(@PathVariable Long id) {
+        try {
+            adjustmentService.deleteAdjustment(id);
+            return ResponseEntity.noContent().build();
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @GetMapping("/download-all-adjustments.xlsx")
     public ResponseEntity<byte[]> downloadAllAdjustmentsExcel() throws IOException {
         byte[] excelData = adjustmentService.exportAdjustmentsToExcel();
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentType(MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         headers.setContentDisposition(ContentDisposition.attachment()
                 .filename("all_adjustments.xlsx")
                 .build());
@@ -66,9 +86,15 @@ public class AdjustmentController {
             String result = adjustmentService.importAdjustmentsFromExcel(file);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import adjustments from Excel file: " + e.getMessage());
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Error processing Excel file: " + e.getMessage());
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

@@ -24,4 +24,8 @@ public class ReturnedSearch implements Serializable {
     private Double unitPrice;
     private String customerName;
     private Integer jalaliYear;
+    private Integer page;
+    private Integer size;
+    private String sortBy;
+    private String order;
 }

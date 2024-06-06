@@ -23,10 +23,11 @@ public class AdjustmentSearch implements Serializable {
     private LocalDate adjustmentDate;
     private String description;
     private Double unitPrice;
-    private Long quantity;
+    private Integer quantity;
+    private Long customerId;
     private AdjustmentType adjustmentType;
     private Long invoiceNumber;
     private Integer jalaliYear;
-    private Long totalPrice;
+    private Double totalPrice;
 
 }

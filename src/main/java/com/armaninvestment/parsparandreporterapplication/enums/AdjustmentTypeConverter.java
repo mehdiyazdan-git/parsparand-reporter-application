@@ -11,10 +11,9 @@ public class AdjustmentTypeConverter implements AttributeConverter<AdjustmentTyp
         if (adjustmentType == null) {
             return null;
         }
-        return switch (adjustmentType.name()) {
-            case "POSITIVE" -> 1;
-            case "NEGATIVE" -> -1;
-            default -> null;
+        return switch (adjustmentType) {
+            case POSITIVE -> 1;
+            case NEGATIVE -> -1;
         };
     }
 
@@ -23,10 +22,6 @@ public class AdjustmentTypeConverter implements AttributeConverter<AdjustmentTyp
         if (dbData == null) {
             return null;
         }
-        return switch (dbData) {
-            case 1 -> AdjustmentType.POSITIVE;
-            case -1 -> AdjustmentType.NEGATIVE;
-            default -> null;
-        };
+        return AdjustmentType.fromValue(dbData);
     }
 }

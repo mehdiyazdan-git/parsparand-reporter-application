@@ -47,13 +47,23 @@ public class ProductController {
     }
 
     @PostMapping(path = {"/", ""})
-    public ResponseEntity<ProductDto> createProduct(@RequestBody ProductDto productDto){
-        return ResponseEntity.ok(productService.createProduct(productDto));
+    public ResponseEntity<?> createProduct(@RequestBody ProductDto productDto){
+       try {
+           return ResponseEntity.ok(productService.createProduct(productDto));
+       }catch (Exception e){
+           e.printStackTrace();
+           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+       }
     }
 
     @PutMapping(path = {"/{id}"})
-    public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, @RequestBody ProductDto productDto){
-        return ResponseEntity.ok(productService.updateProduct(id, productDto));
+    public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody ProductDto productDto){
+        try {
+            return ResponseEntity.ok(productService.updateProduct(id, productDto));
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
     }
 
     @DeleteMapping(path = {"/{id}"})

@@ -11,8 +11,8 @@ import java.time.LocalDate;
 
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
 public interface PaymentMapper {
-    @Mapping(source = "yearId", target = "year.id")
-    @Mapping(source = "customerId", target = "customer.id")
+    @Mapping(target = "customer", ignore = true)
+    @Mapping(target = "year", ignore = true)
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(paymentDto.getPaymentDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(paymentDto.getPaymentDate()))")
     Payment toEntity(PaymentDto paymentDto);

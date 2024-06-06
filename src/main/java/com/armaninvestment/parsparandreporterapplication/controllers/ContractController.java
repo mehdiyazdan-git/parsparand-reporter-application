@@ -2,7 +2,6 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractSelectDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.UserSelectDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ContractService;
 import lombok.RequiredArgsConstructor;
@@ -60,8 +59,23 @@ public class ContractController {
     }
 
     @GetMapping("/download-all-contracts.xlsx")
-    public ResponseEntity<byte[]> downloadAllContractsExcel() throws IOException {
-        byte[] excelData = contractService.exportContractsToExcel();
+    public ResponseEntity<byte[]> downloadAllContractsExcel(
+            @RequestParam(defaultValue = "0", required = false) int page,
+            @RequestParam(defaultValue = "5", required = false) int size,
+            @RequestParam(defaultValue = "id", required = false) String sortBy,
+            @RequestParam(defaultValue = "ASC", required = false) String order,
+            @RequestParam(defaultValue = "false", required = false) boolean exportAll,
+            ContractSearch search
+    ) throws IllegalAccessException {
+        boolean _exportAll = Boolean.parseBoolean(String.valueOf(exportAll));
+        int _size = Integer.parseInt(String.valueOf(size));
+        int _page = Integer.parseInt(String.valueOf(page));
+        search.setPage(_page);
+        search.setSize(_size);
+        search.setSortBy(sortBy);
+        search.setOrder(order);
+
+        byte[] excelData = contractService.exportContractsToExcel(search, _exportAll);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDisposition(ContentDisposition.attachment()

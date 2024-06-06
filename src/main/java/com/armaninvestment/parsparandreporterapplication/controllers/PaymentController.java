@@ -1,7 +1,9 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.PaymentDto;
+import com.armaninvestment.parsparandreporterapplication.enums.PaymentSubject;
 import com.armaninvestment.parsparandreporterapplication.searchForms.PaymentSearch;
+import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,8 +37,12 @@ public class PaymentController {
     }
 
     @PostMapping(path = {"/", ""})
-    public ResponseEntity<PaymentDto> createPayment(@RequestBody PaymentDto paymentDto){
-        return ResponseEntity.ok(paymentService.createPayment(paymentDto));
+    public ResponseEntity<?> createPayment(@RequestBody PaymentDto paymentDto){
+        try {
+            return ResponseEntity.ok(paymentService.createPayment(paymentDto));
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PutMapping(path = {"/{id}"})
@@ -51,8 +57,25 @@ public class PaymentController {
     }
 
     @GetMapping("/download-all-payments.xlsx")
-    public ResponseEntity<byte[]> downloadAllPaymentsExcel() throws IOException {
-        byte[] excelData = paymentService.exportPaymentsToExcel();
+    public ResponseEntity<byte[]> downloadAllPaymentsExcel(
+            @RequestParam(defaultValue = "0",required = false) int page,
+            @RequestParam(defaultValue = "5",required = false) int size,
+            @RequestParam(defaultValue = "id",required = false) String sortBy,
+            @RequestParam(defaultValue = "ASC",required = false) String order,
+            @RequestParam(defaultValue = "false",required = false) boolean exportAll,
+            PaymentSearch search
+    ) throws IllegalAccessException {
+        boolean _exportAll = Boolean.parseBoolean(String.valueOf(exportAll));
+        int _size = Integer.parseInt(String.valueOf(size));
+        int _page = Integer.parseInt(String.valueOf(page));
+        search.setPage(_page);
+        search.setSize(_size);
+        search.setSortBy(sortBy);
+        search.setOrder(order);
+
+        System.out.println(search);
+
+        byte[] excelData = paymentService.exportPaymentsToExcel(search, _exportAll);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDisposition(ContentDisposition.attachment()

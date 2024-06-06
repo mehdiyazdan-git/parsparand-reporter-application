@@ -2,12 +2,15 @@ package com.armaninvestment.parsparandreporterapplication.services;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportItemDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.mappers.ReportItemMapper;
 import com.armaninvestment.parsparandreporterapplication.mappers.ReportMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ReportSpecification;
+import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
+import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
@@ -184,6 +187,7 @@ public class ReportService {
 
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Reports");
+            sheet.setRightToLeft(true);
 
             // Create header row
             Row headerRow = sheet.createRow(0);
@@ -211,13 +215,11 @@ public class ReportService {
     }
 
     private void createHeaderCells(Row headerRow) {
-        CellStyle headerCellStyle = headerRow.getSheet().getWorkbook().createCellStyle();
-        Font font = headerRow.getSheet().getWorkbook().createFont();
-        font.setBold(true);
-        headerCellStyle.setFont(font);
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle headerCellStyle = cellStyleHelper.getHeaderCellStyle(headerRow.getSheet().getWorkbook());
 
         String[] headers = {
-                "Report Date", "Report Explanation", "Year ID", "Total Price", "Total Quantity"
+                "تاریخ گزارش", "شرح گزارش", "مبلغ ( ریال)", "تعداد"
         };
 
         for (int i = 0; i < headers.length; i++) {
@@ -230,9 +232,8 @@ public class ReportService {
     private void populateReportRow(Report report, Row row) {
         int cellNum = 0;
 
-        row.createCell(cellNum++).setCellValue(report.getReportDate() != null ? report.getReportDate().toString() : "");
+        row.createCell(cellNum++).setCellValue(report.getReportDate() != null ? DateConvertor.convertGregorianToJalali(report.getReportDate()) : "");
         row.createCell(cellNum++).setCellValue(report.getReportExplanation() != null ? report.getReportExplanation() : "");
-        row.createCell(cellNum++).setCellValue(report.getYear() != null ? report.getYear().getId() : 0);
 
         // Calculate total quantity and total price
         long totalQuantity = report.getReportItems().stream().mapToLong(ReportItem::getQuantity).sum();
@@ -240,6 +241,17 @@ public class ReportService {
 
         row.createCell(cellNum++).setCellValue(totalPrice);
         row.createCell(cellNum++).setCellValue(totalQuantity);
+
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle defaultCellStyle = cellStyleHelper.getCellStyle(row.getSheet().getWorkbook());
+        CellStyle monatoryCellStyle = cellStyleHelper.getMonatoryCellStyle(row.getSheet().getWorkbook());
+
+        for (int i = 0; i < cellNum; i++) {
+            Cell cell = row.getCell(i);
+            cell.setCellStyle(defaultCellStyle);
+        }
+        row.getCell(2).setCellStyle(monatoryCellStyle);
+        row.getCell(3).setCellStyle(monatoryCellStyle);
     }
 
     private List<Report> getReportsBySearchCriteria(ReportSearch search) {
@@ -333,5 +345,67 @@ public class ReportService {
 
         reportRepository.saveAll(reports);
         return reports.size() + " گزارش با موفقیت وارد شدند.";
+    }
+
+
+    public List<SalesByYearGroupByMonth> findSalesByYearGroupByMonth(Short yearName, String productType) {
+        List<Object[]> results = reportRepository.getSalesByYearGroupByMonth(yearName, productType);
+        List<SalesByYearGroupByMonth> list = new ArrayList<>();
+
+        // Create a map to store the results by month number
+        Map<Short, SalesByYearGroupByMonth> resultMap = new HashMap<>();
+
+        for (Object[] result : results) {
+            resultMap.put((Short) result[0], new SalesByYearGroupByMonth(
+                    (Short) result[0],     // month number
+                    (String) result[1],      // month name
+                    (Double) result[2],  // total amount
+                    (Long) result[3]         // total quantity
+            ));
+        }
+
+        // Iterate through all 12 months and add them to the list, using the resultMap
+        for (short monthNumber = 1; monthNumber <= 12; monthNumber++) {
+            SalesByYearGroupByMonth monthData = resultMap.get(monthNumber);
+
+            if (monthData == null) {
+                // Month has no result, create an item with zero values
+                list.add(new SalesByYearGroupByMonth(
+                        monthNumber,
+                        getMonthName(monthNumber), // You can implement this method to get the month name
+                        0D,
+                        0L
+                ));
+            } else {
+                list.add(monthData);
+            }
+        }
+
+        return list;
+    }
+    private String getMonthName(int monthNumber) {
+        // Define an array of Persian month names (replace with actual month names)
+        String[] persianMonthNames = {
+                "فروردین",
+                "اردیبهشت",
+                "خرداد",
+                "تیر",
+                "مرداد",
+                "شهریور",
+                "مهر",
+                "آبان",
+                "آذر",
+                "دی",
+                "بهمن",
+                "اسفند"
+        };
+
+        // Check if the provided monthNumber is within a valid range (1 to 12)
+        if (monthNumber >= 1 && monthNumber <= 12) {
+            // Subtract 1 from the monthNumber to match the array index
+            return persianMonthNames[monthNumber - 1];
+        } else {
+            return "Invalid Month";
+        }
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpecificationExecutor<Invoice> {
@@ -48,4 +49,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
 
     @Query("select (count(i) > 0) from Invoice i where i.year.id = :yearId")
     boolean existsByYearId(@Param("yearId") Long yearId);
+
+    @Query("select i from Invoice i where i.invoiceNumber = :invoiceId")
+    Optional<Invoice> findByInvoiceNumber(@Param("invoiceId") Long invoiceId);
 }

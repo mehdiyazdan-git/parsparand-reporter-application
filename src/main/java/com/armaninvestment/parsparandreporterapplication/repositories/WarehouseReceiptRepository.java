@@ -60,4 +60,14 @@ public interface WarehouseReceiptRepository extends JpaRepository<WarehouseRecei
     );
 
 
+    @Query(nativeQuery = true,value = """
+            select
+             cast(coalesce(sum(wri.quantity * wri.unit_price),0) as double precision),
+             cast(coalesce(sum(wri.quantity),0) as double precision)
+              from  warehouse_invoice\s
+            join warehouse_receipt wr on warehouse_invoice.receipt_id = wr.id \s
+            join warehouse_receipt_item wri on wr.id = wri.warehouse_receipt_id \s
+            where warehouse_invoice.invoice_id is null\s
+            and customer_id = :customerId\s""")
+    List<Object[]> getNotInvoicedAmountByCustomerId(Long customerId);
 }

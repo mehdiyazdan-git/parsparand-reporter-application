@@ -1,7 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.CustomerDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
+import com.armaninvestment.parsparandreporterapplication.dtos.*;
+import com.armaninvestment.parsparandreporterapplication.entities.Contract;
 import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.exceptions.DatabaseIntegrityViolationException;
 import com.armaninvestment.parsparandreporterapplication.mappers.CustomerMapper;
@@ -11,6 +11,7 @@ import com.armaninvestment.parsparandreporterapplication.specifications.Customer
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataImporter;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -34,6 +36,7 @@ public class CustomerService {
     private final PaymentRepository paymentRepository;
     private final ReportItemRepository reportItemRepository;
     private final WarehouseReceiptRepository warehouseReceiptRepository;
+    private final WarehouseReceiptItemRepository warehouseReceiptItemRepository;
 
     public Page<CustomerDto> findCustomerByCriteria(CustomerSearch search, int page, int size, String sortBy, String order) {
         Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
@@ -120,5 +123,108 @@ public class CustomerService {
         List<CustomerDto> customerDtos = customerRepository.findAll().stream().map(customerMapper::toDto)
                 .collect(Collectors.toList());
         return ExcelDataExporter.exportData(customerDtos, CustomerDto.class);
+    }
+
+    public ClientSummaryResult getClientSummaryByCustomerId(Long customerId) {
+        List<Object[]> objects = warehouseReceiptItemRepository.getClientSummaryByCustomerId(customerId);
+        List<ClientSummaryDTO> list = new ArrayList<>();
+        for (Object[] obj : objects) {
+            ClientSummaryDTO dto = new ClientSummaryDTO();
+            dto.setContractNumber((String) obj[0]);
+            dto.setAdvancedPayment((Double) obj[1]);
+            dto.setPerformanceBound((Double) obj[2]);
+            dto.setInsuranceDeposit((Double) obj[3]);
+            dto.setSalesAmount((Double) obj[4]);
+            dto.setSalesQuantity((Double) obj[5]);
+            dto.setVat((Double) obj[6]);
+            list.add(dto);
+        }
+
+        PaymentReportDto totalPaymentByCustomerId = getPaymentGroupBySubjectFilterByCustomerId(customerId);
+
+        double performanceBoundCoefficient = 0d;
+        double insuranceDepositCoefficient = 0d;
+
+        Optional<Contract> optionalContract = contractRepository.findLastContractByCustomerId(customerId);
+        if (optionalContract.isPresent()) {
+            Contract contract = optionalContract.get();
+            performanceBoundCoefficient = (contract.getPerformanceBond() != null) ? contract.getPerformanceBond() : 0d;
+            insuranceDepositCoefficient = (contract.getInsuranceDeposit() != null) ? contract.getInsuranceDeposit() : 0d;
+        }
+
+        NotInvoicedReportDto notInvoicedReportDto = getNotInvoicedByCustomerId(customerId,insuranceDepositCoefficient,performanceBoundCoefficient);
+        AdjustmentReportDto adjustmentReportDto =  getAdjustmentByCustomerId(customerId,insuranceDepositCoefficient,performanceBoundCoefficient);
+
+        return new ClientSummaryResult(
+                list,
+                notInvoicedReportDto,
+                adjustmentReportDto,
+                totalPaymentByCustomerId
+        );
+    }
+    @Data
+    private static class NotInvoiced {
+        private Double amount;
+        private Double quantity;
+
+        public NotInvoiced(Double amount, Double quantity) {
+            this.amount = amount;
+            this.quantity = quantity;
+        }
+    }
+    private NotInvoicedReportDto getNotInvoicedByCustomerId(Long customerId, Double insuranceDeposit, Double performanceBound) {
+        List<Object[]> objectList = warehouseReceiptRepository.getNotInvoicedAmountByCustomerId(customerId);
+        NotInvoiced notInvoiced = objectList.stream().map(obj -> new NotInvoiced((Double) obj[0], (Double) obj[1])).toList().get(0);
+        Double amount = notInvoiced.getAmount();
+        Double quantity = notInvoiced.getQuantity();
+        if (amount != null && amount > 0) {
+            Double vat = (double) Math.round(amount * 0.09);
+            Long performance = Math.round(amount * performanceBound);
+            Long insurance = Math.round(amount * insuranceDeposit);
+
+            return new NotInvoicedReportDto(amount, quantity, vat, insurance, performance);
+        }
+        return new NotInvoicedReportDto(0d,0d, 0d, 0L, 0L);
+    }
+
+    private AdjustmentReportDto getAdjustmentByCustomerId(Long customerId, Double insuranceDeposit, Double performanceBound) {
+        Double adjustments = (Double) warehouseReceiptItemRepository.getAdjustmentsByCustomerId(customerId);
+
+        if (adjustments != null && adjustments != 0) {
+            Double vat = (double) Math.round(adjustments * 0.09);
+            Long insuranceDepositValue = Math.round(adjustments * insuranceDeposit);
+            Long performanceBoundValue = Math.round(adjustments * performanceBound);
+
+            return new AdjustmentReportDto(
+                    adjustments,
+                    vat,
+                    insuranceDepositValue,
+                    performanceBoundValue
+            );
+        }
+        return new AdjustmentReportDto(0d, 0d, 0L, 0L);
+    }
+
+    private PaymentReportDto getPaymentGroupBySubjectFilterByCustomerId(Long customerId) {
+        List<Object[]> objectList = paymentRepository.getPaymentGroupBySubjectFilterByCustomerId(customerId);
+
+        PaymentReportDto paymentReportDto = new PaymentReportDto();
+
+        for (Object[] row : objectList) {
+            Long paymentSubject = (Long) row[0];
+            Double sum = (Double) row[1];
+
+            if (paymentSubject == 1) {
+                paymentReportDto.setProductPayment(sum);
+            } else if (paymentSubject == 2) {
+                paymentReportDto.setInsuranceDepositPayment(sum);
+            } else if (paymentSubject == 3) {
+                paymentReportDto.setPerformanceBoundPayment(sum);
+            } else if (paymentSubject == 4) {
+                paymentReportDto.setAdvancedPayment(sum);
+            }
+        }
+
+        return paymentReportDto;
     }
 }

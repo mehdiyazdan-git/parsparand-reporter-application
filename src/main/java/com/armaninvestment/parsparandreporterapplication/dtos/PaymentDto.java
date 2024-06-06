@@ -1,7 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.dtos;
 
+import com.armaninvestment.parsparandreporterapplication.enums.PaymentSubject;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,13 +19,11 @@ import java.time.LocalDate;
 public class PaymentDto implements Serializable {
     private Long id;
     private LocalDate paymentDate;
-    @Size(max = 255)
-    private String paymentDescryption;
+    private String paymentDescription;
     private Long customerId;
     private String customerName;
     private Long yearId;
     private Long yearName;
-    private Long paymentAmount;
-    @Size(max = 255)
-    private String paymentSubject;
+    private Double paymentAmount;
+    private PaymentSubject paymentSubject;
 }

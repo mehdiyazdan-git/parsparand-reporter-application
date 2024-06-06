@@ -36,10 +36,14 @@ public class Invoice{
     @Enumerated(EnumType.STRING)
     private SalesType salesType;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
+    @ManyToOne(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "customer_id")
     @ToString.Exclude
     private Customer customer;
+
+    @OneToMany(mappedBy = "invoice")
+    @ToString.Exclude
+    private Set<Adjustment> adjustments = new LinkedHashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "contract_id")
@@ -65,9 +69,7 @@ public class Invoice{
     @Column(name = "performance_bound")
     private Long performanceBound;
 
-    @OneToMany(mappedBy = "invoice")
-    @ToString.Exclude
-    private Set<Adjustment> adjustments = new LinkedHashSet<>();
+
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude

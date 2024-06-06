@@ -9,6 +9,7 @@ import com.armaninvestment.parsparandreporterapplication.mappers.WarehouseReceip
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.WarehouseReceiptSpecification;
+import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
@@ -18,6 +19,7 @@ import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -288,42 +290,50 @@ public class WarehouseReceiptService {
         return jalaliDate.getYear();
     }
 
-    public byte[] exportWarehouseReceiptsToExcel(WarehouseReceiptSearch search) {
-        List<WarehouseReceipt> warehouseReceipts = getWarehouseReceiptsBySearchCriteria(search);
+
+
+    public byte[] exportWarehouseReceiptsToExcel(WarehouseReceiptSearch search, boolean exportAll) throws IllegalAccessException {
+        List<WarehouseReceiptDto> warehouseReceipts;
+
+        if (exportAll) {
+            warehouseReceipts = findAll(search);
+        } else {
+            Page<WarehouseReceiptDto> paginatedWarehouseReceipts = findPage(search.getPage(), search.getSize(), search.getSortBy(), search.getOrder(), search);
+            warehouseReceipts = paginatedWarehouseReceipts.getContent();
+        }
 
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Warehouse Receipts");
-            sheet.setRightToLeft(true); // Switch the sheet direction to right-to-left
+            // set direction to rtl
+            sheet.setRightToLeft(true);
 
             // Create header row
             Row headerRow = sheet.createRow(0);
-            CellStyle headerCellStyle = workbook.createCellStyle();
-            headerCellStyle.setFillForegroundColor(IndexedColors.SKY_BLUE.getIndex()); // Assuming light blue background
-            headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            createHeaderCells(headerRow);
 
-            String[] headers = {
-                    "شماره حواله", "تاریخ حواله", "شرح", "کد مشتری",
-                    "سال", "مبلغ حواله"
-            };
-
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerCellStyle);
-            }
+            // Initialize totals
+            long totalQuantity = 0;
+            double totalPrice = 0;
 
             // Create data rows
             int rowNum = 1;
-            for (WarehouseReceipt warehouseReceipt : warehouseReceipts) {
+            for (WarehouseReceiptDto warehouseReceipt : warehouseReceipts) {
                 Row row = sheet.createRow(rowNum++);
-                populateWarehouseReceiptRow(warehouseReceipt, row, workbook);
+                populateWarehouseReceiptRow(warehouseReceipt, row);
+
+                // Sum totals
+                totalQuantity += warehouseReceipt.getWarehouseReceiptItems().stream().mapToLong(WarehouseReceiptItemDto::getQuantity).sum();
+                totalPrice += warehouseReceipt.getWarehouseReceiptItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum();
             }
 
-            // Set borders for the entire data area
-            setBordersToAllCells(sheet);
+            // Create subtotal row
+            Row subtotalRow = sheet.createRow(rowNum);
+            createSubtotalRow(subtotalRow, totalQuantity, totalPrice);
 
             // Adjust column widths
-            adjustColumnWidths(sheet);
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                sheet.autoSizeColumn(i);
+            }
 
             // Write the workbook to a byte array output stream
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -334,80 +344,90 @@ public class WarehouseReceiptService {
         }
     }
 
-    private void populateWarehouseReceiptRow(WarehouseReceipt warehouseReceipt, Row row, Workbook workbook) {
+    private void createSubtotalRow(Row subtotalRow, long totalQuantity, double totalPrice) {
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle footerCellStyle = cellStyleHelper.getFooterCellStyle(subtotalRow.getSheet().getWorkbook());
+
         int cellNum = 0;
-        CellStyle cellStyle = workbook.createCellStyle();
-        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        subtotalRow.createCell(cellNum++).setCellValue("جمع کل"); // Subtotal label
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue(totalQuantity);
+        subtotalRow.createCell(cellNum++).setCellValue(totalPrice);
 
-        Cell cell;
+        // Merge cells [0, 5]
+        subtotalRow.getSheet().addMergedRegion(new CellRangeAddress(subtotalRow.getRowNum(), subtotalRow.getRowNum(), 0, 5));
 
-        cell = row.createCell(cellNum++);
-        cell.setCellValue(warehouseReceipt.getWarehouseReceiptNumber() != null ? warehouseReceipt.getWarehouseReceiptNumber() : 0);
-        cell.setCellStyle(cellStyle);
-
-        cell = row.createCell(cellNum++);
-        cell.setCellValue(warehouseReceipt.getWarehouseReceiptDate() != null ? DateConvertor.convertGregorianToJalali(warehouseReceipt.getWarehouseReceiptDate()) : "");
-        cell.setCellStyle(cellStyle);
-
-        cell = row.createCell(cellNum++);
-        cell.setCellValue(warehouseReceipt.getWarehouseReceiptDescription() != null ? warehouseReceipt.getWarehouseReceiptDescription() : "");
-        cell.setCellStyle(cellStyle);
-
-        cell = row.createCell(cellNum++);
-        cell.setCellValue(warehouseReceipt.getCustomer() != null ? warehouseReceipt.getCustomer().getCustomerCode() : "");
-        cell.setCellStyle(cellStyle);
-
-        cell = row.createCell(cellNum++);
-        cell.setCellValue(warehouseReceipt.getYear() != null ? warehouseReceipt.getYear().getName() : 0);
-        cell.setCellStyle(cellStyle);
-
-        long subTotal = 0L;
-        for (WarehouseReceiptItemDto item : warehouseReceiptMapper.toDto(warehouseReceipt).getWarehouseReceiptItems()) {
-            subTotal += item.getQuantity() * item.getUnitPrice();
-        }
-
-        cell = row.createCell(cellNum++);
-        cell.setCellValue(subTotal);
-        CellStyle subTotalCellStyle = workbook.createCellStyle();
-        subTotalCellStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
-        subTotalCellStyle.setAlignment(HorizontalAlignment.CENTER);
-        cell.setCellStyle(subTotalCellStyle);
-    }
-
-
-
-    private void setBordersToAllCells(Sheet sheet) {
-        for (int rowNum = 0; rowNum <= sheet.getLastRowNum(); rowNum++) {
-            Row row = sheet.getRow(rowNum);
-            if (row != null) {
-                for (int cellNum = 0; cellNum < row.getLastCellNum(); cellNum++) {
-                    Cell cell = row.getCell(cellNum);
-                    if (cell == null) {
-                        cell = row.createCell(cellNum);
-                    }
-                    CellStyle cellStyle = cell.getSheet().getWorkbook().createCellStyle();
-                    cellStyle.setBorderBottom(BorderStyle.THIN);
-                    cellStyle.setBorderTop(BorderStyle.THIN);
-                    cellStyle.setBorderRight(BorderStyle.THIN);
-                    cellStyle.setBorderLeft(BorderStyle.THIN);
-                    cell.setCellStyle(cellStyle);
-                }
+        for (int i = 0; i < subtotalRow.getLastCellNum(); i++) {
+            Cell cell = subtotalRow.getCell(i);
+            if (cell != null) {
+                cell.setCellStyle(footerCellStyle);
             }
         }
+        subtotalRow.getCell(6).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(7).setCellStyle(footerCellStyle);
     }
 
-    private void adjustColumnWidths(Sheet sheet) {
-        sheet.setColumnWidth(0, 256 * 10); // "شماره حواله"
-        sheet.setColumnWidth(1, 256 * 10); // "تاریخ حواله"
-        sheet.setColumnWidth(2, 256 * 100); // "شرح حواله"
-        sheet.setColumnWidth(3, 256 * 20); // "کد مشتری"
-        sheet.setColumnWidth(4, 256 * 10); // "سال"
-        sheet.setColumnWidth(5, 256 * 20); // "مبلغ حواله"
+    private void createHeaderCells(Row headerRow) {
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle headerCellStyle = cellStyleHelper.getHeaderCellStyle(headerRow.getSheet().getWorkbook());
+
+        String[] headers = {
+                "شناسه حواله", "تاریخ حواله", "شرح حواله", "شماره حواله", "شناسه مشتری",
+                "نام مشتری", "تعداد", "مبلغ (ریال)"
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerCellStyle);
+        }
     }
 
+    private void populateWarehouseReceiptRow(WarehouseReceiptDto warehouseReceipt, Row row) {
+        int cellNum = 0;
 
-    private List<WarehouseReceipt> getWarehouseReceiptsBySearchCriteria(WarehouseReceiptSearch search) {
-        Specification<WarehouseReceipt> specification = WarehouseReceiptSpecification.bySearchCriteria(search);
-        return warehouseReceiptRepository.findAll(specification);
+        row.createCell(cellNum++).setCellValue(warehouseReceipt.getId() != null ? warehouseReceipt.getId() : 0);
+        row.createCell(cellNum++).setCellValue(warehouseReceipt.getWarehouseReceiptDate() != null ? DateConvertor.convertGregorianToJalali(warehouseReceipt.getWarehouseReceiptDate()) : "");
+        row.createCell(cellNum++).setCellValue(warehouseReceipt.getWarehouseReceiptDescription() != null ? warehouseReceipt.getWarehouseReceiptDescription() : "");
+        row.createCell(cellNum++).setCellValue(warehouseReceipt.getWarehouseReceiptNumber() != null ? warehouseReceipt.getWarehouseReceiptNumber() : 0);
+        row.createCell(cellNum++).setCellValue(warehouseReceipt.getCustomerId() != null ? warehouseReceipt.getCustomerId() : 0);
+        row.createCell(cellNum++).setCellValue(warehouseReceipt.getCustomerName() != null ? warehouseReceipt.getCustomerName() : "");
+
+        // Calculate total quantity and total price
+        long totalQuantity = warehouseReceipt.getWarehouseReceiptItems().stream().mapToLong(WarehouseReceiptItemDto::getQuantity).sum();
+        double totalPrice = warehouseReceipt.getWarehouseReceiptItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum();
+
+        row.createCell(cellNum++).setCellValue(totalQuantity);
+        row.createCell(cellNum++).setCellValue(totalPrice);
+
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle defaultCellStyle = cellStyleHelper.getCellStyle(row.getSheet().getWorkbook());
+        CellStyle monatoryCellStyle = cellStyleHelper.getMonatoryCellStyle(row.getSheet().getWorkbook());
+
+        for (int i = 0; i < cellNum; i++) {
+            Cell cell = row.getCell(i);
+            cell.setCellStyle(defaultCellStyle);
+        }
+        row.getCell(6).setCellStyle(monatoryCellStyle);
+        row.getCell(7).setCellStyle(monatoryCellStyle);
     }
+
+    private List<WarehouseReceiptDto> findAll(WarehouseReceiptSearch search) {
+        Specification<WarehouseReceipt> warehouseReceiptSpecification = WarehouseReceiptSpecification.bySearchCriteria(search);
+        List<WarehouseReceipt> warehouseReceipts = warehouseReceiptRepository.findAll(warehouseReceiptSpecification);
+        return warehouseReceipts.stream().map(warehouseReceiptMapper::toDto).collect(Collectors.toList());
+    }
+
+    private Page<WarehouseReceiptDto> findPage(int page, int size, String sortBy, String order, WarehouseReceiptSearch search) {
+        var direction = "asc".equalsIgnoreCase(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        var pageable = PageRequest.of(page, size, direction, sortBy);
+        Specification<WarehouseReceipt> spec = WarehouseReceiptSpecification.bySearchCriteria(search);
+        Page<WarehouseReceipt> paginatedWarehouseReceipts = warehouseReceiptRepository.findAll(spec, pageable);
+        return paginatedWarehouseReceipts.map(warehouseReceiptMapper::toDto);
+    }
+
 }

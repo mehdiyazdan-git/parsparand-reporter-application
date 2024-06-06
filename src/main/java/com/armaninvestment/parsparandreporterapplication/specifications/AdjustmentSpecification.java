@@ -57,6 +57,14 @@ public class AdjustmentSpecification {
                 Join<Adjustment, Year> yearJoin = root.join("year", JoinType.LEFT);
                 predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
+            if (searchCriteria.getCustomerId() != null){
+                Join<Adjustment,Invoice> invoiceJoin = root.join("invoice", JoinType.LEFT);
+
+                Join<Invoice,Customer> customerJoin = invoiceJoin.join("customer", JoinType.LEFT);
+
+                predicates.add(criteriaBuilder.equal(customerJoin.get("id"), searchCriteria.getCustomerId()));
+
+            }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };

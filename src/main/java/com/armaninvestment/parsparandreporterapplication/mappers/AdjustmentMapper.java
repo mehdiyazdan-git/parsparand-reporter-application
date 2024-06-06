@@ -11,14 +11,15 @@ import java.time.LocalDate;
 
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AdjustmentMapper {
-    @Mapping(source = "yearId", target = "year.id")
-    @Mapping(source = "invoiceId", target = "invoice.id")
+    @Mapping(target = "year", ignore = true)
+    @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(adjustmentDto.getAdjustmentDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(adjustmentDto.getAdjustmentDate()))")
     Adjustment toEntity(AdjustmentDto adjustmentDto);
 
     @Mapping(source = "year.id", target = "yearId")
     @Mapping(source = "invoice.id", target = "invoiceId")
+    @Mapping(target = "totalPrice", expression = "java(calculateTotalPrice(adjustment.getUnitPrice(), adjustment.getQuantity()))")
     AdjustmentDto toDto(Adjustment adjustment);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -28,6 +29,11 @@ public interface AdjustmentMapper {
     @Mapping(target = "month", expression = "java(extractMonth(adjustmentDto.getAdjustmentDate()))")
     Adjustment partialUpdate(AdjustmentDto adjustmentDto, @MappingTarget Adjustment adjustment);
 
+
+
+    default Double calculateTotalPrice(Double unitPrice, Integer quantity) {
+        return unitPrice * quantity;
+    }
     default Integer extractJalaliYear(LocalDate date) {
         if (date == null) {
             return null;

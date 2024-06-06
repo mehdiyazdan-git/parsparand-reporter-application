@@ -1,6 +1,4 @@
 package com.armaninvestment.parsparandreporterapplication.specifications;
-import com.armaninvestment.parsparandreporterapplication.entities.WarehouseReceipt;
-import com.github.eloyzone.jalalicalendar.DateConverter;
 
 
 import com.armaninvestment.parsparandreporterapplication.entities.Customer;
@@ -29,8 +27,8 @@ public class PaymentSpecification {
             if (searchCriteria.getId() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("id"), searchCriteria.getId()));
             }
-            if (searchCriteria.getPaymentDescryption() != null && !searchCriteria.getPaymentDescryption().isEmpty()) {
-                predicates.add(criteriaBuilder.like(root.get("paymentDescryption"), "%" + searchCriteria.getPaymentDescryption() + "%"));
+            if (searchCriteria.getPaymentDescription() != null && !searchCriteria.getPaymentDescription().isEmpty()) {
+                predicates.add(criteriaBuilder.like(root.get("paymentDescription"), "%" + searchCriteria.getPaymentDescription() + "%"));
             }
             if (searchCriteria.getPaymentDate() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("paymentDate"), searchCriteria.getPaymentDate()));
@@ -38,8 +36,12 @@ public class PaymentSpecification {
             if (searchCriteria.getPaymentAmount() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("paymentAmount"), searchCriteria.getPaymentAmount()));
             }
-            if (searchCriteria.getPaymentSubject() != null && !searchCriteria.getPaymentSubject().isEmpty()) {
-                predicates.add(criteriaBuilder.like(root.get("paymentSubject"), "%" + searchCriteria.getPaymentSubject() + "%"));
+            if (searchCriteria.getPaymentSubject() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("paymentSubject"),searchCriteria.getPaymentSubject()));
+            }
+            if (searchCriteria.getCustomerId() != null) {
+                Join<Payment, Customer> customerJoin = root.join("customer", JoinType.LEFT);
+                predicates.add(criteriaBuilder.equal(customerJoin.get("id"), searchCriteria.getCustomerId()));
             }
             if (searchCriteria.getCustomerName() != null && !searchCriteria.getCustomerName().isEmpty()) {
                 Join<Payment, Customer> customerJoin = root.join("customer", JoinType.LEFT);

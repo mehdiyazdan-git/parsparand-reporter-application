@@ -11,16 +11,16 @@ import com.armaninvestment.parsparandreporterapplication.mappers.ContractMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ContractSpecification;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
+import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
+import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -30,6 +30,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
@@ -200,12 +201,164 @@ public class ContractService {
         contractRepository.deleteById(id);
     }
 
-    public byte[] exportContractsToExcel() throws IOException {
-        List<ContractDto> contractDtos = contractRepository.findAll().stream()
-                .map(contractMapper::toDto)
-                .collect(Collectors.toList());
-        return ExcelDataExporter.exportData(contractDtos, ContractDto.class);
+
+
+    public byte[] exportContractsToExcel(ContractSearch search, boolean exportAll) throws IllegalAccessException {
+        List<ContractDto> contracts;
+
+        if (exportAll) {
+            contracts = findAll(search);
+        } else {
+            Page<ContractDto> paginatedContracts = findPage(search.getPage(), search.getSize(), search.getSortBy(), search.getOrder(), search);
+            contracts = paginatedContracts.getContent();
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Contracts");
+            // set direction to rtl
+            sheet.setRightToLeft(true);
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            createHeaderCells(headerRow);
+
+            // Initialize totals
+            long totalQuantity = 0;
+            double totalPrice = 0;
+            double totalAdvancePayment = 0;
+            double totalInsuranceDeposit = 0;
+            double totalPerformanceBond = 0;
+
+            // Create data rows
+            int rowNum = 1;
+            for (ContractDto contract : contracts) {
+                Row row = sheet.createRow(rowNum++);
+                populateContractRow(contract, row);
+
+                // Sum totals
+                totalQuantity += contract.getContractItems().stream().mapToLong(ContractItemDto::getQuantity).sum();
+                totalPrice += contract.getContractItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum();
+                totalAdvancePayment += contract.getAdvancePayment() != null ? contract.getAdvancePayment() : 0;
+                totalInsuranceDeposit += contract.getInsuranceDeposit() != null ? contract.getInsuranceDeposit() : 0;
+                totalPerformanceBond += contract.getPerformanceBond() != null ? contract.getPerformanceBond() : 0;
+            }
+
+            // Create subtotal row
+            Row subtotalRow = sheet.createRow(rowNum);
+            createSubtotalRow(subtotalRow, totalQuantity, totalPrice, totalAdvancePayment, totalInsuranceDeposit, totalPerformanceBond);
+
+            // Adjust column widths
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Write the workbook to a byte array output stream
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export contracts to Excel", e);
+        }
     }
+
+    private void createSubtotalRow(Row subtotalRow, long totalQuantity, double totalPrice, double totalAdvancePayment, double totalInsuranceDeposit, double totalPerformanceBond) {
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle footerCellStyle = cellStyleHelper.getFooterCellStyle(subtotalRow.getSheet().getWorkbook());
+
+        int cellNum = 0;
+        subtotalRow.createCell(cellNum++).setCellValue("جمع کل"); // Subtotal label
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue("");
+        subtotalRow.createCell(cellNum++).setCellValue(totalAdvancePayment);
+        subtotalRow.createCell(cellNum++).setCellValue(totalInsuranceDeposit);
+        subtotalRow.createCell(cellNum++).setCellValue(totalPerformanceBond);
+        subtotalRow.createCell(cellNum++).setCellValue(totalQuantity);
+        subtotalRow.createCell(cellNum++).setCellValue(totalPrice);
+
+        // Merge cells [0, 6]
+        subtotalRow.getSheet().addMergedRegion(new CellRangeAddress(subtotalRow.getRowNum(), subtotalRow.getRowNum(), 0, 6));
+
+        for (int i = 0; i < subtotalRow.getLastCellNum(); i++) {
+            Cell cell = subtotalRow.getCell(i);
+            if (cell != null) {
+                cell.setCellStyle(footerCellStyle);
+            }
+        }
+        subtotalRow.getCell(7).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(8).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(9).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(10).setCellStyle(footerCellStyle);
+        subtotalRow.getCell(11).setCellStyle(footerCellStyle);
+    }
+
+    private void createHeaderCells(Row headerRow) {
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle headerCellStyle = cellStyleHelper.getHeaderCellStyle(headerRow.getSheet().getWorkbook());
+
+        String[] headers = {
+                "شناسه قرارداد", "عنوان قرارداد", "شماره قرارداد", "تاریخ شروع", "تاریخ پایان",
+                "شناسه مشتری", "نام مشتری", "ضریب پیش پرداخت", "ضریب سپرده بیمه",
+                "ضریب حسن انجام کار", "تعداد", "مبلغ"
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerCellStyle);
+        }
+    }
+
+    private void populateContractRow(ContractDto contract, Row row) {
+        int cellNum = 0;
+
+        row.createCell(cellNum++).setCellValue(contract.getId() != null ? contract.getId() : 0);
+        row.createCell(cellNum++).setCellValue(contract.getContractDescription() != null ? contract.getContractDescription() : "");
+        row.createCell(cellNum++).setCellValue(contract.getContractNumber() != null ? contract.getContractNumber() : "");
+        row.createCell(cellNum++).setCellValue(contract.getStartDate() != null ? DateConvertor.convertGregorianToJalali(contract.getStartDate()) : "");
+        row.createCell(cellNum++).setCellValue(contract.getEndDate() != null ? DateConvertor.convertGregorianToJalali(contract.getEndDate()) : "");
+        row.createCell(cellNum++).setCellValue(contract.getCustomerId() != null ? contract.getCustomerId() : 0);
+        row.createCell(cellNum++).setCellValue(contract.getCustomerName() != null ? contract.getCustomerName() : "");
+        row.createCell(cellNum++).setCellValue(contract.getAdvancePayment() != null ? contract.getAdvancePayment() : 0.0);
+        row.createCell(cellNum++).setCellValue(contract.getInsuranceDeposit() != null ? contract.getInsuranceDeposit() : 0.0);
+        row.createCell(cellNum++).setCellValue(contract.getPerformanceBond() != null ? contract.getPerformanceBond() : 0.0);
+
+        long totalQuantity = contract.getContractItems().stream().mapToLong(ContractItemDto::getQuantity).sum();
+        double totalPrice = contract.getContractItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum();
+
+        row.createCell(cellNum++).setCellValue(totalQuantity);
+        row.createCell(cellNum++).setCellValue(totalPrice);
+
+        CellStyleHelper cellStyleHelper = new CellStyleHelper();
+        CellStyle defaultCellStyle = cellStyleHelper.getCellStyle(row.getSheet().getWorkbook());
+        CellStyle monatoryCellStyle = cellStyleHelper.getMonatoryCellStyle(row.getSheet().getWorkbook());
+
+        for (int i = 0; i < cellNum; i++) {
+            Cell cell = row.getCell(i);
+            cell.setCellStyle(defaultCellStyle);
+        }
+        row.getCell(10).setCellStyle(monatoryCellStyle);
+        row.getCell(11).setCellStyle(monatoryCellStyle);
+    }
+
+    private List<ContractDto> findAll(ContractSearch search) {
+        Specification<Contract> contractSpecification = ContractSpecification.bySearchCriteria(search);
+        List<Contract> contracts = contractRepository.findAll(contractSpecification);
+        return contracts.stream().map(contractMapper::toDto).collect(Collectors.toList());
+    }
+
+    private Page<ContractDto> findPage(int page, int size, String sortBy, String order, ContractSearch search) {
+        var direction = "asc".equalsIgnoreCase(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        var pageable = PageRequest.of(page, size, direction, sortBy);
+        Specification<Contract> spec = ContractSpecification.bySearchCriteria(search);
+        Page<Contract> paginatedContracts = contractRepository.findAll(spec, pageable);
+        return paginatedContracts.map(contractMapper::toDto);
+    }
+
+
 
     public String importContractsFromExcel(MultipartFile file) throws IOException {
         Map<String, ContractDto> contractsMap = new HashMap<>();
