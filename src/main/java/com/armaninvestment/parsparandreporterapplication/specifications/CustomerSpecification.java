@@ -53,6 +53,5 @@ public class CustomerSpecification {
             }
             return predicate;
         };
-
     }
 }

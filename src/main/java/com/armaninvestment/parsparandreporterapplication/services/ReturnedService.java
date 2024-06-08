@@ -8,7 +8,6 @@ import com.armaninvestment.parsparandreporterapplication.searchForms.ReturnedSea
 import com.armaninvestment.parsparandreporterapplication.specifications.ReturnedSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataImporter;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
@@ -18,6 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,10 +41,14 @@ public class ReturnedService {
                 .map(returnedMapper::toDto);
     }
 
-    public ReturnedDto createReturned(ReturnedDto returnedDto) {
-        var returnedEntity = returnedMapper.toEntity(returnedDto);
-        var savedReturned = returnedRepository.save(returnedEntity);
-        return returnedMapper.toDto(savedReturned);
+    public ResponseEntity<?> createReturned(ReturnedDto returnedDto) {
+        try {
+            var returnedEntity = returnedMapper.toEntity(returnedDto);
+            var savedReturned = returnedRepository.save(returnedEntity);
+            return ResponseEntity.ok(returnedMapper.toDto(savedReturned));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     public ReturnedDto getReturnedById(Long id) {
@@ -51,11 +56,15 @@ public class ReturnedService {
         return returnedMapper.toDto(returnedEntity);
     }
 
-    public ReturnedDto updateReturned(Long id, ReturnedDto returnedDto) {
-        var returnedEntity = returnedRepository.findById(id).orElseThrow();
-        Returned partialUpdate = returnedMapper.partialUpdate(returnedDto, returnedEntity);
-        var updatedReturned = returnedRepository.save(partialUpdate);
-        return returnedMapper.toDto(updatedReturned);
+    public ResponseEntity<?> updateReturned(Long id, ReturnedDto returnedDto) {
+        try {
+            var returnedEntity = returnedRepository.findById(id).orElseThrow(() -> new RuntimeException("مورد بازگشتی با شناسه " + id + " یافت نشد."));
+            Returned partialUpdate = returnedMapper.partialUpdate(returnedDto, returnedEntity);
+            var updatedReturned = returnedRepository.save(partialUpdate);
+            return ResponseEntity.ok(returnedMapper.toDto(updatedReturned));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("به دلیل خطایی نامشخص، بروزرسانی با شکست مواجه شد: " + e.getMessage());
+        }
     }
 
     public void deleteReturned(Long id) {
@@ -117,7 +126,7 @@ public class ReturnedService {
             workbook.write(outputStream);
             return outputStream.toByteArray();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to export returneds to Excel", e);
+            throw new RuntimeException("Failed to export returned to Excel", e);
         }
     }
 

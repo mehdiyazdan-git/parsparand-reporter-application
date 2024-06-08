@@ -348,7 +348,7 @@ public class ReportService {
     }
 
 
-    public List<SalesByYearGroupByMonth> findSalesByYearGroupByMonth(Short yearName, String productType) {
+    public List<SalesByYearGroupByMonth> findSalesByYearGroupByMonth(Short yearName, Integer productType) {
         List<Object[]> results = reportRepository.getSalesByYearGroupByMonth(yearName, productType);
         List<SalesByYearGroupByMonth> list = new ArrayList<>();
 

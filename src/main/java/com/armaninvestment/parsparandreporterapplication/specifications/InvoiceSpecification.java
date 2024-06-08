@@ -27,6 +27,13 @@ public class InvoiceSpecification {
             if (searchCriteria.getInvoiceNumber() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("invoiceNumber"), searchCriteria.getInvoiceNumber()));
             }
+            if (searchCriteria.getContractNumber() != null && !searchCriteria.getContractNumber().isEmpty()) {
+                Join<Invoice, Contract> contractJoin = root.join("contract", JoinType.INNER);
+                predicates.add(criteriaBuilder.equal(contractJoin.get("contractNumber"), searchCriteria.getContractNumber()));
+            }
+            if(searchCriteria.getContractId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("contractId"), searchCriteria.getContractId()));
+            }
             if (searchCriteria.getIssuedDate() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("issuedDate"), searchCriteria.getIssuedDate()));
             }

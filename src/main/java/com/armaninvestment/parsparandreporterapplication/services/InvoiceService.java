@@ -52,6 +52,7 @@ public class InvoiceService {
 
     @PersistenceContext
     private final EntityManager entityManager;
+    private final WarehouseInvoiceRepository warehouseInvoiceRepository;
 
     public Page<InvoiceDto> findAll(int page, int size, String sortBy, String sortDir, InvoiceSearch invoiceSearch) {
 
@@ -221,6 +222,9 @@ public class InvoiceService {
         invoiceEntity.setCustomer(customerRepository.findById(invoiceDto.getCustomerId()).orElseThrow());
         invoiceEntity.setYear(yearRepository.findById(invoiceDto.getYearId()).orElseThrow());
         var savedInvoice = invoiceRepository.save(invoiceEntity);
+        WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
+        warehouseInvoice.setInvoiceId(savedInvoice.getId());
+        warehouseInvoiceRepository.save(warehouseInvoice);
         return invoiceMapper.toDto(savedInvoice);
     }
 
@@ -271,6 +275,11 @@ public class InvoiceService {
             throw new IllegalStateException("صورت‌حساب پیدا نشد.");
         }
         invoiceRepository.deleteById(id);
+        Optional<WarehouseInvoice> optionalWarehouseInvoice = warehouseInvoiceRepository.findWarehouseInvoiceByInvoiceId(id);
+        if (optionalWarehouseInvoice.isPresent()) {
+            WarehouseInvoice warehouseInvoice = optionalWarehouseInvoice.get();
+            warehouseInvoice.setInvoiceId(null);
+        }
     }
     @Transactional
     public String importInvoicesFromExcel(MultipartFile file) throws IOException {
@@ -408,8 +417,16 @@ public class InvoiceService {
                 })
                 .collect(Collectors.toList());
 
-        invoiceRepository.saveAll(invoices); // Batch save to minimize database connection
-        return invoices.size() + " فاکتور با موفقیت وارد شدند.";
+        List<Invoice> invoiceList = invoiceRepository.saveAll(invoices);// Batch save to minimize database connection
+        invoiceList.forEach(invoice -> {
+            invoice.getInvoiceItems().forEach(invoiceItem -> {
+                WarehouseInvoice warehouseInvoiceByReceiptId = warehouseInvoiceRepository.findWarehouseInvoiceByReceiptId(invoiceItem.getWarehouseReceipt().getId());
+                warehouseInvoiceByReceiptId.setInvoiceId(invoiceItem.getInvoice().getId());
+                warehouseInvoiceRepository.save(warehouseInvoiceByReceiptId);
+            })
+        ;}
+        );
+        return invoiceList.size() + "فاکتور با موفقیت ثبت شد.";
     }
 
     public byte[] exportInvoicesToExcel(InvoiceSearch search, boolean exportAll) {

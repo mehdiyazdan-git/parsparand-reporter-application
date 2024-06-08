@@ -70,4 +70,5 @@ public interface WarehouseReceiptRepository extends JpaRepository<WarehouseRecei
             where warehouse_invoice.invoice_id is null\s
             and customer_id = :customerId\s""")
     List<Object[]> getNotInvoicedAmountByCustomerId(Long customerId);
+
 }

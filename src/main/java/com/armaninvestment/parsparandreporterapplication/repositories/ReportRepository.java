@@ -21,9 +21,9 @@ public interface ReportRepository extends JpaRepository<Report, Long>, JpaSpecif
     @Query("select (count(r) > 0) from Report r where r.year.id = :yearId")
     boolean existsByYearId(@Param("yearId") Long yearId);
 
-    @Query(value = "SELECT * FROM get_monthly_report_by_year_and_month(:year, :month, cast(:productType as text))", nativeQuery = true)
-    List<Object[]> getReport(@Param("year") int year, @Param("month") int month, @Param("productType") String productType);
+    @Query(value = "SELECT * FROM get_monthly_report_by_year_and_month(:year, :month, cast(:productType as integer))", nativeQuery = true)
+    List<Object[]> getReport(@Param("year") int year, @Param("month") int month, @Param("productType") int productType);
 
-    @Query(value = "select * from get_sales_by_year_group_by_month_filter_by_product_type(CAST(:yearId AS smallint),CAST(:productType AS text))", nativeQuery = true)
-    List<Object[]> getSalesByYearGroupByMonth(@Param("yearId") Short yearId, @Param("productType") String productType);
+    @Query(value = "select * from get_sales_by_year_group_by_month_filter_by_product_type(CAST(:yearId AS integer),CAST(:productType AS integer))", nativeQuery = true)
+    List<Object[]> getSalesByYearGroupByMonth(@Param("yearId") Short yearId, @Param("productType") int productType);
 }

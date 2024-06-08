@@ -26,6 +26,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -47,6 +49,7 @@ public class WarehouseReceiptService {
     private final YearRepository yearRepository;
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
+    private final WarehouseInvoiceRepository warehouseInvoiceRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -159,6 +162,9 @@ public class WarehouseReceiptService {
         }
         var warehouseReceiptEntity = warehouseReceiptMapper.toEntity(warehouseReceiptDto);
         var savedWarehouseReceipt = warehouseReceiptRepository.save(warehouseReceiptEntity);
+        WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
+        warehouseInvoice.setReceiptId(savedWarehouseReceipt.getId());
+        warehouseInvoiceRepository.save(warehouseInvoice);
         return warehouseReceiptMapper.toDto(savedWarehouseReceipt);
     }
 
@@ -192,6 +198,7 @@ public class WarehouseReceiptService {
 
     public void deleteWarehouseReceipt(Long id) {
         warehouseReceiptRepository.deleteById(id);
+        warehouseInvoiceRepository.deleteByReceiptId(id);
     }
 
 
@@ -267,6 +274,11 @@ public class WarehouseReceiptService {
                 .collect(Collectors.toList());
 
         warehouseReceiptRepository.saveAll(warehouseReceipts);
+        warehouseReceipts.forEach(warehouseReceipt -> {
+            WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
+            warehouseInvoice.setReceiptId(warehouseReceipt.getId());
+            warehouseInvoiceRepository.save(warehouseInvoice);
+        });
         return warehouseReceipts.size() + " رسید انبار با موفقیت وارد شد.";
     }
 

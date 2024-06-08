@@ -45,10 +45,11 @@ public class CustomerService {
         return customerRepository.findAll(specification, pageRequest)
                 .map(customerMapper::toDto);
     }
-    public List<CustomerSelect> findAllCustomerSelect(String searchParam) {
+    public List<CustomerSelect> findAllCustomerSelect(String searchParam,String sortBy,String order) {
         Specification<Customer> specification = CustomerSpecification.getSelectSpecification(searchParam);
+        Sort sort = Sort.by(Sort.Direction.fromString(order.toLowerCase()), sortBy);
         return customerRepository
-                .findAll(specification)
+                .findAll(specification, sort)
                 .stream()
                 .map(customerMapper::toSelectDto)
                 .collect(Collectors.toList());

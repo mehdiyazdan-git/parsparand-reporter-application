@@ -97,7 +97,7 @@ public class ReportController {
     public ResponseEntity<List<CompanyReportDTO>> getMonthlyReportByProduct(
             @PathVariable Integer year,
             @PathVariable Integer month,
-            @PathVariable String productType) {
+            @PathVariable Integer productType) {
 
         List<Object[]> resultSet = reportRepository.getReport(year, month, productType);
         List<CompanyReportDTO> list = resultSet.stream().map(obj -> {
@@ -116,7 +116,7 @@ public class ReportController {
     @GetMapping(path = "/sales-by-year/{yearName}/{productType}")
     public ResponseEntity<List<SalesByYearGroupByMonth>> getSalesByYearGroupByMonth(
             @PathVariable("yearName") Short yearName,
-            @PathVariable("productType") String productType) {
+            @PathVariable("productType") Integer productType) {
         return ResponseEntity.ok(reportService.findSalesByYearGroupByMonth(yearName, productType));
     }
 }

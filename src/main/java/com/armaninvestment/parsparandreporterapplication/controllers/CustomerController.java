@@ -38,8 +38,11 @@ public class CustomerController {
     }
     @GetMapping(path = "/select")
     public ResponseEntity<List<CustomerSelect>> findAllCustomerSelect(
-            @RequestParam(required = false) String searchQuery) {
-        List<CustomerSelect> customers = customerService.findAllCustomerSelect(searchQuery);
+            @RequestParam(required = false) String searchQuery,
+            @RequestParam(defaultValue = "bigCustomer",required = false) String sortBy,
+            @RequestParam(defaultValue = "DESC",required = false) String order
+    ) {
+        List<CustomerSelect> customers = customerService.findAllCustomerSelect(searchQuery,sortBy,order);
         return ResponseEntity.ok(customers);
     }
     @GetMapping("/{customerId}/summary")
