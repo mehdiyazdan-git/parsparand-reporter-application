@@ -14,10 +14,12 @@ public class WarehouseInvoice {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "receipt_id")
-    private Long receiptId;
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "receipt_id")
+    private WarehouseReceipt warehouseReceipt;
 
-    @Column(name = "invoice_id")
-    private Long invoiceId;
+    @JoinColumn(name = "invoice_id")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private Invoice invoice;
 
 }

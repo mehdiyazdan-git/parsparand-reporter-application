@@ -103,17 +103,24 @@ public class WarehouseReceiptController {
 
     @PostMapping("/import")
     public ResponseEntity<?> importWarehouseReceiptsFromExcel(@RequestParam("file") MultipartFile file) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json; charset=UTF-8");
+
         try {
             String list = warehouseReceiptService.importWarehouseReceiptsFromExcel(file);
-            return ResponseEntity.ok(list);
+            return ResponseEntity.ok().headers(headers).body(list);
         } catch (IOException e) {
             e.printStackTrace();
+            String errorMessage = "خطا در بارگذاری: " + e.getMessage();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to import warehouse receipts from Excel file: " + e.getMessage());
+                    .headers(headers)
+                    .body(errorMessage);
         } catch (Exception e) {
             e.printStackTrace();
+            String errorMessage = "خطا در پردازش فایل لکسل: " + e.getMessage();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Error processing Excel file: " + e.getMessage());
+                    .headers(headers)
+                    .body(errorMessage);
         }
     }
 }

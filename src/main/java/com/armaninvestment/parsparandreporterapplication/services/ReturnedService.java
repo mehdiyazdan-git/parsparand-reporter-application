@@ -1,14 +1,19 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ReturnedDto;
+import com.armaninvestment.parsparandreporterapplication.entities.Customer;
 import com.armaninvestment.parsparandreporterapplication.entities.Returned;
+import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.mappers.ReturnedMapper;
+import com.armaninvestment.parsparandreporterapplication.repositories.CustomerRepository;
 import com.armaninvestment.parsparandreporterapplication.repositories.ReturnedRepository;
+import com.armaninvestment.parsparandreporterapplication.repositories.YearRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReturnedSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ReturnedSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataImporter;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -20,18 +25,27 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.*;
 
 @Service
 @RequiredArgsConstructor
 public class ReturnedService {
     private final ReturnedRepository returnedRepository;
     private final ReturnedMapper returnedMapper;
+    private final YearRepository yearRepository;
+    private final CustomerRepository customerRepository;
+
+    @PersistenceContext
+    private final EntityManager entityManager;
 
     public Page<ReturnedDto> findReturnedByCriteria(ReturnedSearch search, int page, int size, String sortBy, String order) {
         Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
@@ -44,8 +58,13 @@ public class ReturnedService {
     public ResponseEntity<?> createReturned(ReturnedDto returnedDto) {
         try {
             var returnedEntity = returnedMapper.toEntity(returnedDto);
-            var savedReturned = returnedRepository.save(returnedEntity);
-            return ResponseEntity.ok(returnedMapper.toDto(savedReturned));
+            if (returnedEntity.getReturnedDate() != null) {
+                returnedEntity.setReturnedDate(returnedDto.getReturnedDate());
+                String year = DateConvertor.convertGregorianToJalali(returnedDto.getReturnedDate()).substring(0, 4);
+                Optional<Year> optionalYear = yearRepository.findByName(Long.valueOf(year));
+                optionalYear.ifPresent(returnedEntity::setYear);
+            }
+            return ResponseEntity.ok(returnedMapper.toDto(returnedEntity));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
@@ -56,27 +75,107 @@ public class ReturnedService {
         return returnedMapper.toDto(returnedEntity);
     }
 
-    public ResponseEntity<?> updateReturned(Long id, ReturnedDto returnedDto) {
-        try {
-            var returnedEntity = returnedRepository.findById(id).orElseThrow(() -> new RuntimeException("مورد بازگشتی با شناسه " + id + " یافت نشد."));
-            Returned partialUpdate = returnedMapper.partialUpdate(returnedDto, returnedEntity);
-            var updatedReturned = returnedRepository.save(partialUpdate);
-            return ResponseEntity.ok(returnedMapper.toDto(updatedReturned));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("به دلیل خطایی نامشخص، بروزرسانی با شکست مواجه شد: " + e.getMessage());
-        }
+    public ReturnedDto updateReturned(Long id, ReturnedDto returnedDto) {
+
+        var returned = returnedRepository.findById(id).orElseThrow();
+        Returned partialUpdate = returnedMapper.partialUpdate(returnedDto, returned);
+
+        Optional<Customer> optionalCustomer = customerRepository.findById(returnedDto.getCustomerId());
+        Optional<Year> optionalYear = yearRepository.findByName(Long.valueOf(returned.getJalaliYear()));
+
+        optionalYear.ifPresent(partialUpdate::setYear);
+        optionalCustomer.ifPresent(partialUpdate::setCustomer);
+
+        return returnedMapper.toDto(returnedRepository.save(partialUpdate));
     }
 
     public void deleteReturned(Long id) {
         returnedRepository.deleteById(id);
     }
 
+    @Transactional
     public String importReturnedsFromExcel(MultipartFile file) throws IOException {
-        List<ReturnedDto> returnedDtos = ExcelDataImporter.importData(file, ReturnedDto.class);
-        List<Returned> returneds = returnedDtos.stream().map(returnedMapper::toEntity).collect(Collectors.toList());
+        Map<Long, ReturnedDto> returnedMap = new LinkedHashMap<>();
+
+        Map<String, Customer> customersMap = customerRepository.findAll().stream()
+                .collect(Collectors.toMap(Customer::getCustomerCode, customer -> customer, (existing, replacement) -> existing));
+        Map<Long, Year> yearsMap = yearRepository.findAll().stream()
+                .collect(Collectors.toMap(Year::getName, year -> year, (existing, replacement) -> existing));
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Iterator<Row> rows = sheet.rowIterator();
+
+            // Skip the header row
+            if (rows.hasNext()) {
+                rows.next();
+            }
+
+            int rowNum = 1;
+            while (rows.hasNext()) {
+                Row currentRow = rows.next();
+                rowNum++;
+                try {
+                    Long returnedNumber = getCellLongValue(currentRow, 0, rowNum);
+                    LocalDate returnedDate = convertToDate(getCellStringValue(currentRow, 1, rowNum));
+                    String returnedDescription = getCellStringValue(currentRow, 2, rowNum);
+                    Double unitPrice = getCellDoubleValue(currentRow, 3, rowNum);
+                    Long quantity = getCellLongValue(currentRow, 4, rowNum);
+                    String customerCode = getCellStringValue(currentRow, 5, rowNum);
+                    Long yearName = getCellLongValue(currentRow, 6, rowNum);
+
+
+                    List<ReturnedDto> list = returnedMap.values().stream().peek(
+                                                returnedDto -> {
+                                                    returnedDto.setReturnedNumber(returnedNumber);
+                                                    returnedDto.setReturnedDate(returnedDate);
+                                                    returnedDto.setReturnedDescription(returnedDescription);
+                                                    returnedDto.setUnitPrice(unitPrice);
+                                                    returnedDto.setQuantity(quantity);
+                                                    returnedDto.setCustomerId(customersMap.get(customerCode).getId());
+                                                    returnedDto.setYearId(yearsMap.get(yearName).getId());
+                                                }).toList();
+
+                    List<Returned> returnedList = list.stream().map(
+                                                returnedDto -> {
+                                                    Returned entity = returnedMapper.toEntity(returnedDto);
+                                                    if (returnedDto.getCustomerId() != null) {
+                                                        entity.setCustomer(entityManager.find(Customer.class, returnedDto.getCustomerId()));
+                                                    }
+                                                    if (returnedDto.getYearId() != null) {
+                                                        entity.setYear(entityManager.find(Year.class, returnedDto.getYearId()));
+                                                    }
+                                                    return entity;
+                                                }).toList();
+
+                    returnedRepository.saveAll(returnedList);
+
+
+                } catch (Exception e) {
+                    throw new RuntimeException("Error in row " + rowNum + ": " + e.getMessage(), e);
+                }
+            }
+        }
+
+        List<Returned> returneds = returnedMap.values().stream()
+                .map(returnedDto -> {
+                    Returned entity = returnedMapper.toEntity(returnedDto);
+                    if (returnedDto.getCustomerId() != null) {
+                        entity.setCustomer(entityManager.find(Customer.class, returnedDto.getCustomerId()));
+                    }
+                    if (returnedDto.getYearId() != null) {
+                        entity.setYear(entityManager.find(Year.class, returnedDto.getYearId()));
+                    }
+                    return entity;
+                })
+                .collect(Collectors.toList());
+
         returnedRepository.saveAll(returneds);
-        return returneds.size() + " returneds have been imported successfully.";
+
+        return returneds.size() + " returneds successfully imported.";
     }
+
+
 
     public byte[] exportReturnedsToExcel(ReturnedSearch search, boolean exportAll) throws IOException {
         List<ReturnedDto> returneds;

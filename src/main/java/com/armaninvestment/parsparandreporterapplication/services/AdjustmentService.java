@@ -3,6 +3,7 @@ package com.armaninvestment.parsparandreporterapplication.services;
 import com.armaninvestment.parsparandreporterapplication.dtos.AdjustmentDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Adjustment;
 import com.armaninvestment.parsparandreporterapplication.entities.Invoice;
+import com.armaninvestment.parsparandreporterapplication.entities.WarehouseReceipt;
 import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.enums.AdjustmentType;
 import com.armaninvestment.parsparandreporterapplication.mappers.AdjustmentMapper;
@@ -22,15 +23,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 @Service
@@ -105,6 +107,8 @@ public class AdjustmentService {
         return adjustmentMapper.toDto(updatedAdjustment);
     }
 
+
+
     public void deleteAdjustment(Long id) {
         if (!adjustmentRepository.existsById(id)) {
             throw new IllegalStateException("سند تعدیل با این شناسه یافت نشد.");
@@ -112,9 +116,19 @@ public class AdjustmentService {
         adjustmentRepository.deleteById(id);
     }
 
-
+    @Transactional
     public String importAdjustmentsFromExcel(MultipartFile file) throws IOException {
         List<AdjustmentDto> adjustmentDtoList = new ArrayList<>();
+
+        Map<String, Invoice> invoicesMap = invoiceRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                        i -> i.getInvoiceNumber() + "-" + i.getIssuedDate(),
+                        i -> i,
+                        (existing, replacement) -> existing
+                ));
+        BiFunction<Long, LocalDate, Invoice> longLocalDateInvoiceNumberBiFunction = (invoiceNumber, invoiceDate) -> {
+            return invoicesMap.get(invoiceNumber + "-" + invoiceDate);
+        };
 
         try (InputStream inputStream = file.getInputStream();
              Workbook workbook = new XSSFWorkbook(inputStream)) {
@@ -131,35 +145,13 @@ public class AdjustmentService {
                 Row row = rows.next();
                 AdjustmentDto adjustmentDto = new AdjustmentDto();
 
-                if (row.getCell(0) != null) {
-                    adjustmentDto.setAdjustmentType(AdjustmentType.fromValue(row.getCell(0).getStringCellValue()));
-                }
-
-                if (row.getCell(1) != null) {
-                    adjustmentDto.setDescription(row.getCell(1).getStringCellValue());
-                }
-
-                if (row.getCell(2) != null) {
-                    adjustmentDto.setQuantity((long) row.getCell(2).getNumericCellValue());
-                }
-
-                if (row.getCell(3) != null) {
-                    adjustmentDto.setUnitPrice(row.getCell(3).getNumericCellValue());
-                }
-
-                if (row.getCell(4) != null) {
-                    Long invoiceNumber = (long) row.getCell(4).getNumericCellValue();
-                    Invoice invoice = invoiceRepository.findByInvoiceNumber(invoiceNumber).orElseThrow(() -> new IllegalStateException("فاکتور با این شناسه یافت نشد."));
-                    adjustmentDto.setInvoiceId(invoice.getId());
-                }
-
-                if (row.getCell(5) != null) {
-                    adjustmentDto.setAdjustmentDate(DateConvertor.convertJalaliToGregorian(row.getCell(5).getStringCellValue()));
-                }
-
-                if (row.getCell(6) != null) {
-                    adjustmentDto.setAdjustmentNumber((long) row.getCell(6).getNumericCellValue());
-                }
+                adjustmentDto.setAdjustmentType(AdjustmentType.fromValue(row.getCell(0).getStringCellValue()));
+                adjustmentDto.setDescription(row.getCell(1).getStringCellValue());
+                adjustmentDto.setQuantity((long) row.getCell(2).getNumericCellValue());
+                adjustmentDto.setUnitPrice(row.getCell(3).getNumericCellValue());
+                adjustmentDto.setTotalPrice(row.getCell(4).getNumericCellValue());
+                adjustmentDto.setAdjustmentDate(DateConvertor.convertJalaliToGregorian(row.getCell(5).getStringCellValue()));
+                adjustmentDto.setAdjustmentNumber((long) row.getCell(6).getNumericCellValue());
                 Year year = yearRepository
                         .findByName(Long.valueOf(row.getCell(5)
                                 .getStringCellValue().substring(0, 4))).orElseThrow(() -> new IllegalStateException("سال با این شناسه یافت نشد."));
@@ -171,20 +163,16 @@ public class AdjustmentService {
         List<Adjustment> list = adjustmentDtoList.stream().map(adjustmentDto -> {
             Adjustment adjustment = adjustmentMapper.toEntity(adjustmentDto);
             Year year = yearRepository.findById(adjustmentDto.getYearId()).orElseThrow(() -> new IllegalStateException("سال با این شناسه یافت نشد."));
-            Invoice invoice = invoiceRepository.findById(adjustmentDto.getInvoiceId()).orElseThrow(() -> new IllegalStateException("فاکتور با این شناسه یافت نشد."));
             adjustment.setYear(year);
             year.getAdjustments().add(adjustment);
+            Invoice invoice = longLocalDateInvoiceNumberBiFunction.apply(adjustmentDto.getAdjustmentNumber(), adjustmentDto.getAdjustmentDate());
             adjustment.setInvoice(invoice);
             invoice.getAdjustments().add(adjustment);
             return adjustment;
-        }
-
-        ).toList();
-
-        adjustmentRepository.saveAll(list);
-        return "Imported " + adjustmentDtoList.size() + " adjustment records successfully.";
+            }).toList();
+            adjustmentRepository.saveAll(list);
+            return "Imported " + adjustmentDtoList.size() + " adjustment records successfully.";
     }
-
 
     public byte[] exportAdjustmentsToExcel() throws IOException {
         List<AdjustmentDto> adjustmentDtos = adjustmentRepository.findAll().stream()

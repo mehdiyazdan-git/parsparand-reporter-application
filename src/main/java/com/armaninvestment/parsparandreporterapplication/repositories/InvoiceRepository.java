@@ -7,11 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpecificationExecutor<Invoice> {
+
+    @Query("select i from Invoice i where i.invoiceNumber = :invoiceNumber and i.issuedDate = :issuedDate")
+    Optional<Invoice> findByInvoiceNumberAndIssuedDate(@Param("invoiceNumber") Long invoiceNumber, @Param("issuedDate") LocalDate issuedDate);
 
     @Query(value = """
             SELECT i.id, i.description

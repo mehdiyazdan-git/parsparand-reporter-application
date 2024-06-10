@@ -1,16 +1,14 @@
 package com.armaninvestment.parsparandreporterapplication.specifications;
 
 
-import com.armaninvestment.parsparandreporterapplication.entities.Customer;
-import com.armaninvestment.parsparandreporterapplication.entities.ReportItem;
-import com.armaninvestment.parsparandreporterapplication.entities.WarehouseReceipt;
-import com.armaninvestment.parsparandreporterapplication.entities.Year;
+import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class WarehouseReceiptSpecification {
 
@@ -34,6 +32,18 @@ public class WarehouseReceiptSpecification {
             }
             if (searchCriteria.getWarehouseReceiptDescription() != null && !searchCriteria.getWarehouseReceiptDescription().isEmpty()) {
                 predicates.add(criteriaBuilder.like(root.get("warehouseReceiptDescription"), "%" + searchCriteria.getWarehouseReceiptDescription() + "%"));
+            }
+            if (searchCriteria.getNotInvoiced() != null && searchCriteria.getNotInvoiced()) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<WarehouseInvoice> subRoot = subquery.from(WarehouseInvoice.class);
+                subquery.select(subRoot.get("id")).where(
+                        criteriaBuilder.equal(subRoot.get("warehouseReceipt"), root),
+                        criteriaBuilder.isNull(subRoot.get("invoice"))
+                );
+                predicates.add(criteriaBuilder.not(criteriaBuilder.exists(subquery)));
+            }
+            if (searchCriteria.getCustomerId() != null){
+                predicates.add(criteriaBuilder.equal(root.get("customer").get("id"), searchCriteria.getCustomerId()));
             }
             if (searchCriteria.getCustomerName() != null && !searchCriteria.getCustomerName().isEmpty()) {
                 predicates.add(criteriaBuilder.like(root.get("customer").get("name"), "%" + searchCriteria.getCustomerName() + "%"));

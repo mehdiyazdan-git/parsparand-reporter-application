@@ -2,6 +2,7 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
 import com.armaninvestment.parsparandreporterapplication.entities.InvoiceSelectDto;
+import com.armaninvestment.parsparandreporterapplication.repositories.InvoiceRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import com.armaninvestment.parsparandreporterapplication.services.InvoiceService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InvoiceController {
     private final InvoiceService invoiceService;
+    private final InvoiceRepository invoiceRepository;
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<InvoiceDto>> getAllInvoicesByCriteria(
@@ -42,6 +44,11 @@ public class InvoiceController {
         }catch (Exception e){
             return ResponseEntity.badRequest().body("در جستجو فاکتور خطایی رخ داده است");
         }
+    }
+    @DeleteMapping("/delete-all")
+    public ResponseEntity<?> deleteAllInvoices() {
+        invoiceRepository.deleteAll();
+        return ResponseEntity.ok("All invoices deleted successfully");
     }
 
     @GetMapping("/download-all-invoices.xlsx")

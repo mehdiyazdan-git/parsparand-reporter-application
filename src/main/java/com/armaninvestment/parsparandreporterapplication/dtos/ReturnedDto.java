@@ -19,12 +19,14 @@ import java.time.LocalDate;
 public class ReturnedDto implements Serializable {
     private Long id;
     private Long quantity;
+    private Double unitPrice;
     private LocalDate returnedDate;
-    @Size(max = 255)
     private String returnedDescription;
     private Long returnedNumber;
-    private Double unitPrice;
     private Long customerId;
+    private String customerName;
     private Integer jalaliYear;
+    private Long yearId;
+
 
 }

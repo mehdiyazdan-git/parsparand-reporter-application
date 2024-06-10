@@ -21,6 +21,8 @@ public class WarehouseReceiptSearch {
     private LocalDate warehouseReceiptDate;
     private String warehouseReceiptDescription;
     private String customerName;
+    private Long customerId;
+    private Boolean notInvoiced;
     private Integer jalaliYear;
     private Long totalQuantity;
     private Double totalPrice;

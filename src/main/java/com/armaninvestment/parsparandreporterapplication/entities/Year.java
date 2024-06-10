@@ -38,6 +38,9 @@ public class Year{
     private Set<Report> reports = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "year")
+    private Set<Returned> returneds = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "year")
     private Set<WarehouseReceipt> warehouseReceipts = new LinkedHashSet<>();
 
     public Year(Long name) {

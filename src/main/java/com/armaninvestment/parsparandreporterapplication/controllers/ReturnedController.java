@@ -42,7 +42,7 @@ public class ReturnedController {
     @PostMapping(path = {"/", ""})
     public ResponseEntity<?> createReturned(@RequestBody ReturnedDto returnedDto){
         try {
-            return ResponseEntity.ok(returnedService.createReturned(returnedDto));
+            return ResponseEntity.status(HttpStatus.CREATED).body(returnedService.createReturned(returnedDto));
         }catch (Exception e){
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

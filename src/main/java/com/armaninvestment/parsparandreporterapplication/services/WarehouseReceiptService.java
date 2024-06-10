@@ -26,8 +26,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -163,7 +162,7 @@ public class WarehouseReceiptService {
         var warehouseReceiptEntity = warehouseReceiptMapper.toEntity(warehouseReceiptDto);
         var savedWarehouseReceipt = warehouseReceiptRepository.save(warehouseReceiptEntity);
         WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
-        warehouseInvoice.setReceiptId(savedWarehouseReceipt.getId());
+        warehouseInvoice.setWarehouseReceipt(savedWarehouseReceipt);
         warehouseInvoiceRepository.save(warehouseInvoice);
         return warehouseReceiptMapper.toDto(savedWarehouseReceipt);
     }
@@ -204,7 +203,7 @@ public class WarehouseReceiptService {
 
 
     public String importWarehouseReceiptsFromExcel(MultipartFile file) throws IOException {
-        Map<Long, WarehouseReceiptDto> warehouseReceiptsMap = new HashMap<>();
+        Map<String, WarehouseReceiptDto> warehouseReceiptsMap = new HashMap<>();
 
         // Fetch all necessary data once
         Map<String, Customer> customersMap = customerRepository.findAll().stream()
@@ -245,7 +244,9 @@ public class WarehouseReceiptService {
                     Product product = Optional.ofNullable(productsMap.get(productCode))
                             .orElseThrow(() -> new IllegalStateException("محصول با کد " + productCode + " یافت نشد."));
 
-                    WarehouseReceiptDto receiptDto = warehouseReceiptsMap.computeIfAbsent(receiptNumber, k -> {
+                    assert receiptDate != null;
+                    WarehouseReceiptDto receiptDto = warehouseReceiptsMap.computeIfAbsent(
+                            String.valueOf(receiptNumber).concat(receiptDate.format(DateTimeFormatter.BASIC_ISO_DATE)), k -> {
                         WarehouseReceiptDto dto = new WarehouseReceiptDto();
                         dto.setWarehouseReceiptNumber(receiptNumber);
                         dto.setWarehouseReceiptDate(receiptDate);
@@ -273,12 +274,19 @@ public class WarehouseReceiptService {
                 .map(warehouseReceiptMapper::toEntity)
                 .collect(Collectors.toList());
 
-        warehouseReceiptRepository.saveAll(warehouseReceipts);
-        warehouseReceipts.forEach(warehouseReceipt -> {
-            WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
-            warehouseInvoice.setReceiptId(warehouseReceipt.getId());
-            warehouseInvoiceRepository.save(warehouseInvoice);
-        });
+        List<WarehouseReceipt> warehouseReceiptList = warehouseReceiptRepository.saveAll(warehouseReceipts);
+        Set<WarehouseInvoice> warehouseInvoices = warehouseReceiptList
+                .stream()
+                .map(warehouseReceipt -> {
+                        WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
+                        warehouseInvoice.setWarehouseReceipt(warehouseReceipt);
+                        return warehouseInvoice;
+                })
+                .collect(Collectors.toSet());
+
+
+        warehouseInvoiceRepository.saveAll(warehouseInvoices);
+
         return warehouseReceipts.size() + " رسید انبار با موفقیت وارد شد.";
     }
 

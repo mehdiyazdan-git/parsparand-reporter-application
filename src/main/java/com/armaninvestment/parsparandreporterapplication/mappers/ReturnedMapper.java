@@ -11,16 +11,21 @@ import java.time.LocalDate;
 
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ReturnedMapper {
-    @Mapping(source = "customerId", target = "customer.id")
+    @Mapping(source = "yearId", target = "year.id")
+    @Mapping(target = "customer" , ignore = true)
+    @Mapping(target = "year", ignore = true)
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(returnedDto.getReturnedDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(returnedDto.getReturnedDate()))")
     Returned toEntity(ReturnedDto returnedDto);
 
+    @Mapping(source = "year.id", target = "yearId")
     @Mapping(source = "customer.id", target = "customerId")
+    @Mapping(source = "customer.name", target = "customerName")
     ReturnedDto toDto(Returned returned);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(source = "customerId", target = "customer.id")
+    @Mapping(target = "customer" , ignore = true)
+    @Mapping(target = "year", ignore = true)
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(returnedDto.getReturnedDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(returnedDto.getReturnedDate()))")
     Returned partialUpdate(ReturnedDto returnedDto, @MappingTarget Returned returned);

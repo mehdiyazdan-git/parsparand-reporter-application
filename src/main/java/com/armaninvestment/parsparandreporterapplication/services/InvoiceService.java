@@ -31,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -223,7 +224,7 @@ public class InvoiceService {
         invoiceEntity.setYear(yearRepository.findById(invoiceDto.getYearId()).orElseThrow());
         var savedInvoice = invoiceRepository.save(invoiceEntity);
         WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
-        warehouseInvoice.setInvoiceId(savedInvoice.getId());
+        warehouseInvoice.setInvoice(savedInvoice);
         warehouseInvoiceRepository.save(warehouseInvoice);
         return invoiceMapper.toDto(savedInvoice);
     }
@@ -278,12 +279,12 @@ public class InvoiceService {
         Optional<WarehouseInvoice> optionalWarehouseInvoice = warehouseInvoiceRepository.findWarehouseInvoiceByInvoiceId(id);
         if (optionalWarehouseInvoice.isPresent()) {
             WarehouseInvoice warehouseInvoice = optionalWarehouseInvoice.get();
-            warehouseInvoice.setInvoiceId(null);
+            warehouseInvoice.setInvoice(null);
         }
     }
     @Transactional
     public String importInvoicesFromExcel(MultipartFile file) throws IOException {
-        Map<Long, InvoiceDto> invoicesMap = new LinkedHashMap<>();
+        Map<String, InvoiceDto> invoicesMap = new LinkedHashMap<>();
 
         // Fetch all necessary data once and store them in maps for quick access
         Map<String, Customer> customersMap = customerRepository.findAll().stream()
@@ -345,8 +346,10 @@ public class InvoiceService {
                     String receiptKey = warehouseReceiptNumber + "-" + warehouseReceiptDate;
                     WarehouseReceipt warehouseReceipt = Optional.ofNullable(warehouseReceiptsMap.get(receiptKey))
                             .orElseThrow(() -> new IllegalStateException("رسید انبار با شماره " + warehouseReceiptNumber + " و تاریخ " + warehouseReceiptDate + " یافت نشد."));
-
-                    InvoiceDto invoiceDto = invoicesMap.computeIfAbsent(invoiceNumber, k -> {
+                    // ترکیب شماره فاکتور + تاریخ فاکتور به عنوان کلید Map
+                    assert issuedDate != null;
+                    InvoiceDto invoiceDto = invoicesMap.computeIfAbsent(
+                            String.valueOf(invoiceNumber).concat(issuedDate.format(DateTimeFormatter.BASIC_ISO_DATE)), k -> {
                         InvoiceDto dto = new InvoiceDto();
                         dto.setInvoiceNumber(invoiceNumber);
                         dto.setIssuedDate(issuedDate);
@@ -411,22 +414,28 @@ public class InvoiceService {
                             warehouseReceipt.addInvoiceItem(item);
                             item.setWarehouseReceipt(warehouseReceipt);
                         }
-                        item.setInvoice(entity); // Ensure the bidirectional relationship is set
+                        item.setInvoice(entity);
                     });
                     return entity;
                 })
                 .collect(Collectors.toList());
 
-        List<Invoice> invoiceList = invoiceRepository.saveAll(invoices);// Batch save to minimize database connection
-        invoiceList.forEach(invoice -> {
-            invoice.getInvoiceItems().forEach(invoiceItem -> {
-                WarehouseInvoice warehouseInvoiceByReceiptId = warehouseInvoiceRepository.findWarehouseInvoiceByReceiptId(invoiceItem.getWarehouseReceipt().getId());
-                warehouseInvoiceByReceiptId.setInvoiceId(invoiceItem.getInvoice().getId());
-                warehouseInvoiceRepository.save(warehouseInvoiceByReceiptId);
-            })
-        ;}
-        );
-        return invoiceList.size() + "فاکتور با موفقیت ثبت شد.";
+        List<Invoice> invoiceList = invoiceRepository.saveAll(invoices);
+        Map<WarehouseReceipt, InvoiceItem> warehouseReceiptInvoiceItemMap = invoiceList.stream()
+                .flatMap(invoice -> invoice.getInvoiceItems().stream())
+                .map(invoiceItem -> new AbstractMap.SimpleEntry<>(invoiceItem.getWarehouseReceipt(), invoiceItem))
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
+
+        List<WarehouseInvoice> warehouseInvoices = warehouseReceiptInvoiceItemMap.entrySet().stream()
+                .map(entry -> {
+                    WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
+                    warehouseInvoice.setInvoice(entry.getValue().getInvoice());
+                    warehouseInvoice.setWarehouseReceipt(entry.getKey());
+                    return warehouseInvoice;
+                }).collect(Collectors.toList());
+
+        warehouseInvoiceRepository.saveAll(warehouseInvoices);
+        return invoiceList.size() + " invoices created";
     }
 
     public byte[] exportInvoicesToExcel(InvoiceSearch search, boolean exportAll) {

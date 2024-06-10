@@ -15,12 +15,12 @@ import java.util.Optional;
 public interface WarehouseInvoiceRepository extends JpaRepository<WarehouseInvoice, Long>, JpaSpecificationExecutor<WarehouseInvoice> {
     @Transactional
     @Modifying
-    @Query("delete from WarehouseInvoice w where w.receiptId = :id")
+    @Query("delete from WarehouseInvoice w where w.warehouseReceipt.id = :id")
     void deleteByReceiptId(@Param("id") Long id);
 
-    @Query("select w from WarehouseInvoice w where w.invoiceId = :id")
+    @Query("select w from WarehouseInvoice w where w.warehouseReceipt = :id")
     Optional<WarehouseInvoice> findWarehouseInvoiceByInvoiceId(@Param("id") Long id);
 
-    @Query("select w from WarehouseInvoice w where w.receiptId = ?1")
+    @Query("select w from WarehouseInvoice w where w.warehouseReceipt.id = ?1")
     WarehouseInvoice findWarehouseInvoiceByReceiptId(Long receiptId);
 }

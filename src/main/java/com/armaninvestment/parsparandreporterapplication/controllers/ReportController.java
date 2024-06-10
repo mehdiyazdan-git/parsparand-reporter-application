@@ -4,8 +4,10 @@ import com.armaninvestment.parsparandreporterapplication.dtos.CompanyReportDTO;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
 import com.armaninvestment.parsparandreporterapplication.repositories.ReportRepository;
+import com.armaninvestment.parsparandreporterapplication.repositories.YearRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ReportService;
+import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
@@ -13,7 +15,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @CrossOrigin
 @RestController
@@ -22,6 +26,7 @@ import java.util.List;
 public class ReportController {
     private final ReportService reportService;
     private final ReportRepository reportRepository;
+    private final YearRepository yearRepository;
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ReportDto>> getAllReportsByCriteria(
@@ -93,25 +98,35 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/by-product/{year}/{month}/{productType}")
-    public ResponseEntity<List<CompanyReportDTO>> getMonthlyReportByProduct(
-            @PathVariable Integer year,
-            @PathVariable Integer month,
-            @PathVariable Integer productType) {
+    @GetMapping("/sales-by-month-and-product-type")
+    public ResponseEntity<?> getMonthlyReportByProduct(
+            @RequestParam(required = false) Long jalaliYear,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer productType) {
 
-        List<Object[]> resultSet = reportRepository.getReport(year, month, productType);
-        List<CompanyReportDTO> list = resultSet.stream().map(obj -> {
-            CompanyReportDTO dto = new CompanyReportDTO();
-            dto.setId((Long) obj[0]);
-            dto.setCustomerName((String) obj[1]);
-            dto.setTotalQuantity((Long) obj[2]);
-            dto.setTotalAmount((Long) obj[3]);
-            dto.setCumulativeTotalQuantity((Long) obj[4]);
-            dto.setCumulativeTotalAmount((Long) obj[5]);
-            dto.setAvgUnitPrice((Long) obj[6]);
-            return dto;
-        }).toList();
-        return ResponseEntity.ok(list);
+        try {
+
+            long _year = Objects.requireNonNullElseGet(jalaliYear, () -> ( Objects.requireNonNull(DateConvertor.findYearFromLocalDate(LocalDate.now())).getName()));
+            int _month = month == null ? 1 : month;
+            int _productType = productType == null ? 2 : productType;
+
+            List<Object[]> resultSet = reportRepository.getReport((int) _year, _month, _productType);
+            List<CompanyReportDTO> list = resultSet.stream().map(obj -> {
+                CompanyReportDTO dto = new CompanyReportDTO();
+                dto.setId((Long) obj[0]);
+                dto.setCustomerName((String) obj[1]);
+                dto.setTotalQuantity((Long) obj[2]);
+                dto.setTotalAmount((Long) obj[3]);
+                dto.setCumulativeTotalQuantity((Long) obj[4]);
+                dto.setCumulativeTotalAmount((Long) obj[5]);
+                dto.setAvgUnitPrice((Long) obj[6]);
+                return dto;
+            }).toList();
+            return ResponseEntity.ok(list);
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        }
     }
     @GetMapping(path = "/sales-by-year/{yearName}/{productType}")
     public ResponseEntity<List<SalesByYearGroupByMonth>> getSalesByYearGroupByMonth(
