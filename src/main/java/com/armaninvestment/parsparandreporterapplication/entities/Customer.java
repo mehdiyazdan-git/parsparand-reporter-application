@@ -2,7 +2,6 @@ package com.armaninvestment.parsparandreporterapplication.entities;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
-import jdk.jshell.Snippet;
 import lombok.*;
 import org.hibernate.proxy.HibernateProxy;
 
@@ -84,35 +83,7 @@ public class Customer{
         this.id = id;
     }
 
-    public void addInvoice(Invoice invoice) {
-        invoices.add(invoice);
-        invoice.setCustomer(this);
-    }
 
-    public void addPayment(Payment payment) {
-        payments.add(payment);
-        payment.setCustomer(this);
-    }
-
-    public void addReportItem(ReportItem reportItem) {
-        reportItems.add(reportItem);
-        reportItem.setCustomer(this);
-    }
-
-    public void addReturned(Returned returned) {
-        returneds.add(returned);
-        returned.setCustomer(this);
-    }
-
-    public void addWarehouseReceipt(WarehouseReceipt warehouseReceipt) {
-        warehouseReceipts.add(warehouseReceipt);
-        warehouseReceipt.setCustomer(this);
-    }
-
-    public void addContract(Contract contract) {
-        contracts.add(contract);
-        contract.setCustomer(this);
-    }
 
     @Override
     public final boolean equals(Object o) {

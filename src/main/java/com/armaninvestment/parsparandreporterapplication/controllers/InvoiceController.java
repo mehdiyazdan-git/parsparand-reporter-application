@@ -116,14 +116,20 @@ public class InvoiceController {
         try {
             String list = invoiceService.importInvoicesFromExcel(file);
             return ResponseEntity.ok(list);
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to import invoices from Excel file: " + e.getMessage());
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .header(HttpHeaders.CONTENT_ENCODING, "UTF-8")
+                    .header(HttpHeaders.CONTENT_TYPE, "text/plain;charset=UTF-8")
+                    .body(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Error processing Excel file: " + e.getMessage());
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .header(HttpHeaders.CONTENT_ENCODING, "UTF-8")
+                    .header(HttpHeaders.CONTENT_TYPE, "text/plain;charset=UTF-8")
+                    .body(e.getMessage());
         }
     }
 }

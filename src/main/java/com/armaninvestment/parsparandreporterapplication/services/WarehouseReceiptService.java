@@ -193,14 +193,10 @@ public class WarehouseReceiptService {
         return warehouseReceiptMapper.toDto(updatedWarehouseReceipt);
     }
 
-
-
     public void deleteWarehouseReceipt(Long id) {
         warehouseReceiptRepository.deleteById(id);
         warehouseInvoiceRepository.deleteByReceiptId(id);
     }
-
-
 
     public String importWarehouseReceiptsFromExcel(MultipartFile file) throws IOException {
         Map<String, WarehouseReceiptDto> warehouseReceiptsMap = new HashMap<>();

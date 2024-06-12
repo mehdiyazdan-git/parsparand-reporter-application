@@ -52,12 +52,16 @@ public class WarehouseReceiptSpecification {
                 Join<WarehouseReceipt, Year> yearJoin = root.join("year", JoinType.LEFT);
                 predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
             }
-            if (searchCriteria.getTotalQuantity() != null) {
+            // If the search criteria contains a total quantity, create a subquery to find the sum of the quantities of the report items
+if (searchCriteria.getTotalQuantity() != null) {
                 Subquery<Long> subquery = query.subquery(Long.class);
+                // Start from the ReportItem class
                 Root<ReportItem> subRoot = subquery.from(ReportItem.class);
+                // Select the sum of the quantities
                 subquery.select(criteriaBuilder.sum(subRoot.get("quantity")));
+                // Only include report items with the same warehouse receipt as the root
                 subquery.where(criteriaBuilder.equal(subRoot.get("warehouseReceipt"), root));
-
+                // Add a predicate to the list of predicates, checking if the sum of the quantities is less than or equal to the search criteria total quantity
                 predicates.add(criteriaBuilder.le(subquery, searchCriteria.getTotalQuantity()));
             }
             if (searchCriteria.getTotalPrice() != null) {

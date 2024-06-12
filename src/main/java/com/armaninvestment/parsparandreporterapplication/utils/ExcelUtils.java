@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.utils;
 
+import com.armaninvestment.parsparandreporterapplication.exceptions.RowColumnException;
 import org.apache.poi.ss.usermodel.*;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 
@@ -20,8 +21,8 @@ public class ExcelUtils {
             } else {
                 throw new IllegalArgumentException("نوع سلول نامعتبر است");
             }
-        } catch (Exception e) {
-            throw new RuntimeException("خطا در ردیف " + rowNum + "، ستون " + (cellIndex + 1) + ": " + e.getMessage(), e);
+        } catch (IllegalArgumentException e) {
+            throw new RowColumnException(rowNum, cellIndex + 1, e.getMessage(), e);
         }
     }
 
@@ -38,9 +39,8 @@ public class ExcelUtils {
             } else {
                 throw new IllegalArgumentException("نوع سلول نامعتبر است");
             }
-        } catch (Exception e) {
-            throw new RuntimeException("خطا در ردیف " + rowNum + "، ستون " + (cellIndex + 1) + ": " + e.getMessage(), e);
-        }
+        } catch (IllegalArgumentException e) {
+            throw new RowColumnException(rowNum, cellIndex + 1, e.getMessage(), e);        }
     }
 
     public static Double getCellDoubleValue(Row row, int cellIndex, int rowNum) {
@@ -56,9 +56,8 @@ public class ExcelUtils {
             } else {
                 throw new IllegalArgumentException("نوع سلول نامعتبر است");
             }
-        } catch (Exception e) {
-            throw new RuntimeException("خطا در ردیف " + rowNum + "، ستون " + (cellIndex + 1) + ": " + e.getMessage(), e);
-        }
+        } catch (IllegalArgumentException e) {
+            throw new RowColumnException(rowNum, cellIndex + 1, e.getMessage(), e);        }
     }
 
 
@@ -75,9 +74,8 @@ public class ExcelUtils {
             } else {
                 throw new IllegalArgumentException("نوع سلول نامعتبر است");
             }
-        } catch (Exception e) {
-            throw new RuntimeException("خطا در ردیف " + rowNum + "، ستون " + (cellIndex + 1) + ": " + e.getMessage(), e);
-        }
+        } catch (IllegalArgumentException e) {
+            throw new RowColumnException(rowNum, cellIndex + 1, e.getMessage(), e);        }
     }
 
     public static LocalDate convertToDate(String dateStr) {

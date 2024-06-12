@@ -4,6 +4,7 @@ import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceItemDto;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
+import com.armaninvestment.parsparandreporterapplication.exceptions.RowColumnException;
 import com.armaninvestment.parsparandreporterapplication.mappers.InvoiceItemMapper;
 import com.armaninvestment.parsparandreporterapplication.mappers.InvoiceMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
@@ -11,6 +12,7 @@ import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSear
 import com.armaninvestment.parsparandreporterapplication.specifications.InvoiceSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
+import com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
@@ -115,9 +117,12 @@ public class InvoiceService {
         // Sorting
         switch (Objects.requireNonNull(sortBy)) {
             case "totalPrice" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalPrice) : cb.desc(totalPrice));
-            case "totalQuantity" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalQuantity) : cb.desc(totalQuantity));
-            case "customerName" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get("customer").get("name")) : cb.desc(root.get("customer").get("name")));
-            default -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get(sortBy)) : cb.desc(root.get(sortBy)));
+            case "totalQuantity" ->
+                    cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalQuantity) : cb.desc(totalQuantity));
+            case "customerName" ->
+                    cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get("customer").get("name")) : cb.desc(root.get("customer").get("name")));
+            default ->
+                    cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get(sortBy)) : cb.desc(root.get(sortBy)));
         }
 
         // Pagination
@@ -188,12 +193,12 @@ public class InvoiceService {
     }
 
 
-    public List<InvoiceSelectDto> searchInvoiceByDescriptionKeywords(String description,Integer yearId) {
+    public List<InvoiceSelectDto> searchInvoiceByDescriptionKeywords(String description, Integer yearId) {
         try {
             List<Object[]> objects = invoiceRepository.searchInvoiceByDescriptionKeywords(description, yearId);
 
             List<InvoiceSelectDto> invoiceSelectDtos = new ArrayList<>();
-            for (Object[] object : objects){
+            for (Object[] object : objects) {
                 InvoiceSelectDto invoiceSelectDto = new InvoiceSelectDto();
                 invoiceSelectDto.setId((Long) object[0]);
                 invoiceSelectDto.setName((String) object[1]);
@@ -203,9 +208,9 @@ public class InvoiceService {
 
             return invoiceSelectDtos;
 
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
-           throw new RuntimeException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -247,7 +252,7 @@ public class InvoiceService {
     }
 
     private void validateInvoiceUniquenessForUpdate(InvoiceDto invoiceDto, Long id) {
-        if (invoiceRepository.existsByInvoiceNumberAndYearIdAndIdNot(invoiceDto.getInvoiceNumber(),invoiceDto.getYearId(), id)) {
+        if (invoiceRepository.existsByInvoiceNumberAndYearIdAndIdNot(invoiceDto.getInvoiceNumber(), invoiceDto.getYearId(), id)) {
             throw new IllegalStateException("یک صورت‌حساب دیگر با این شماره صورت‌حساب برای سال مالی مورد نظر وجود دارد.");
         }
         validateReceiptIdUniquenessOnUpdateEntity(invoiceDto);
@@ -256,21 +261,23 @@ public class InvoiceService {
     private void validateReceiptIdUniqueness(InvoiceDto invoiceDto) {
         if (invoiceDto.getInvoiceItems() != null) {
             invoiceDto.getInvoiceItems().forEach(invoiceItemDto -> {
-                if (invoiceItemRepository.existsByWarehouseReceiptId(invoiceItemDto.getWarehouseReceiptId())){
+                if (invoiceItemRepository.existsByWarehouseReceiptId(invoiceItemDto.getWarehouseReceiptId())) {
                     throw new IllegalStateException("برای این شماره حواله قبلا فاکتور صادر شده است.");
                 }
             });
         }
     }
+
     private void validateReceiptIdUniquenessOnUpdateEntity(InvoiceDto invoiceDto) {
         if (invoiceDto.getInvoiceItems() != null) {
             invoiceDto.getInvoiceItems().forEach(invoiceItemDto -> {
-                if (invoiceItemRepository.existsByWarehouseReceiptIdAndIdNot(invoiceItemDto.getWarehouseReceiptId(),invoiceItemDto.getId())){
+                if (invoiceItemRepository.existsByWarehouseReceiptIdAndIdNot(invoiceItemDto.getWarehouseReceiptId(), invoiceItemDto.getId())) {
                     throw new IllegalStateException("برای این شماره حواله قبلا فاکتور صادر شده است.");
                 }
             });
         }
     }
+
     public void deleteInvoice(Long id) {
         if (!invoiceRepository.existsById(id)) {
             throw new IllegalStateException("صورت‌حساب پیدا نشد.");
@@ -282,6 +289,7 @@ public class InvoiceService {
             warehouseInvoice.setInvoice(null);
         }
     }
+
     @Transactional
     public String importInvoicesFromExcel(MultipartFile file) throws IOException {
         Map<String, InvoiceDto> invoicesMap = new LinkedHashMap<>();
@@ -304,6 +312,7 @@ public class InvoiceService {
                         (existing, replacement) -> existing
                 ));
 
+        WarehouseReceipt warehouseReceipt = null;
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             Iterator<Row> rows = sheet.rowIterator();
@@ -318,38 +327,44 @@ public class InvoiceService {
                 Row currentRow = rows.next();
                 rowNum++;
                 try {
-                    Long invoiceNumber = getCellLongValue(currentRow, 0, rowNum);
-                    LocalDate issuedDate = convertToDate(getCellStringValue(currentRow, 1, rowNum));
-                    LocalDate dueDate = convertToDate(getCellStringValue(currentRow, 2, rowNum));
-                    String salesType = getCellStringValue(currentRow, 3, rowNum);
-                    String contractNumber = getCellStringValue(currentRow, 4, rowNum);
-                    String customerCode = getCellStringValue(currentRow, 5, rowNum);
-                    Long advancedPayment = getCellLongValue(currentRow, 6, rowNum);
-                    Long insuranceDeposit = getCellLongValue(currentRow, 7, rowNum);
-                    Long performanceBound = getCellLongValue(currentRow, 8, rowNum);
-                    Long yearName = getCellLongValue(currentRow, 9, rowNum);
-                    Integer quantity = getCellIntValue(currentRow, 10, rowNum);
-                    Long unitPrice = getCellLongValue(currentRow, 11, rowNum);
-                    String productCode = getCellStringValue(currentRow, 12, rowNum);
-                    Long warehouseReceiptNumber = getCellLongValue(currentRow, 13, rowNum);
-                    LocalDate warehouseReceiptDate = convertToDate(getCellStringValue(currentRow, 14, rowNum));
-                    Integer invoiceStatusId = getCellIntValue(currentRow, 15, rowNum);
+                    String index = ExcelUtils.getCellStringValue(currentRow, 0, rowNum);
+                    Long invoiceNumber = ExcelUtils.getCellLongValue(currentRow, 1, rowNum);
+                    LocalDate issuedDate = ExcelUtils.convertToDate(ExcelUtils.getCellStringValue(currentRow, 2, rowNum));
+                    LocalDate dueDate = ExcelUtils.convertToDate(ExcelUtils.getCellStringValue(currentRow, 3, rowNum));
+                    String salesType = ExcelUtils.getCellStringValue(currentRow, 4, rowNum);
+                    String contractNumber = ExcelUtils.getCellStringValue(currentRow, 5, rowNum);
+                    String customerCode = ExcelUtils.getCellStringValue(currentRow, 6, rowNum);
+                    Long advancedPayment = ExcelUtils.getCellLongValue(currentRow, 7, rowNum);
+                    Long insuranceDeposit = ExcelUtils.getCellLongValue(currentRow, 8, rowNum);
+                    Long performanceBound = ExcelUtils.getCellLongValue(currentRow, 9, rowNum);
+                    Long yearName = ExcelUtils.getCellLongValue(currentRow, 10, rowNum);
+                    Integer quantity = ExcelUtils.getCellIntValue(currentRow, 11, rowNum);
+                    Long unitPrice = ExcelUtils.getCellLongValue(currentRow, 12, rowNum);
+                    String productCode = ExcelUtils.getCellStringValue(currentRow, 13, rowNum);
+                    Long warehouseReceiptNumber = ExcelUtils.getCellLongValue(currentRow, 14, rowNum);
+                    LocalDate warehouseReceiptDate = ExcelUtils.convertToDate(ExcelUtils.getCellStringValue(currentRow, 15, rowNum));
+                    Integer invoiceStatusId = ExcelUtils.getCellIntValue(currentRow, 16, rowNum);
 
+                    int finalRowNum = rowNum;
                     Year year = Optional.ofNullable(yearsMap.get(yearName))
-                            .orElseThrow(() -> new IllegalStateException("سال با نام " + yearName + " یافت نشد."));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum, 10, "سال با نام " + yearName + " یافت نشد.", null));
+                    int finalRowNum1 = rowNum;
                     Customer customer = Optional.ofNullable(customersMap.get(customerCode))
-                            .orElseThrow(() -> new IllegalStateException("مشتری با کد " + customerCode + " یافت نشد."));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum1, 6, "مشتری با کد " + customerCode + " یافت نشد.", null));
+                    int finalRowNum2 = rowNum;
                     Product product = Optional.ofNullable(productsMap.get(productCode))
-                            .orElseThrow(() -> new IllegalStateException("محصول با کد " + productCode + " یافت نشد."));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum2, 13, "محصول با کد " + productCode + " یافت نشد.", null));
+                    int finalRowNum3 = rowNum;
                     InvoiceStatus invoiceStatus = Optional.ofNullable(invoiceStatusesMap.get(invoiceStatusId))
-                            .orElseThrow(() -> new IllegalStateException("وضعیت فاکتور با شماره " + invoiceNumber + " یافت نشد."));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum3, 16, "وضعیت فاکتور با شماره " + invoiceNumber + " یافت نشد.", null));
                     String receiptKey = warehouseReceiptNumber + "-" + warehouseReceiptDate;
-                    WarehouseReceipt warehouseReceipt = Optional.ofNullable(warehouseReceiptsMap.get(receiptKey))
-                            .orElseThrow(() -> new IllegalStateException("رسید انبار با شماره " + warehouseReceiptNumber + " و تاریخ " + warehouseReceiptDate + " یافت نشد."));
+                    int finalRowNum4 = rowNum;
+                    warehouseReceipt = Optional.ofNullable(warehouseReceiptsMap.get(receiptKey))
+                            .orElseThrow(() -> new RowColumnException(finalRowNum4, 14, "رسید انبار با شماره " + warehouseReceiptNumber + " و تاریخ " + warehouseReceiptDate + " یافت نشد.", null));
+
                     // ترکیب شماره فاکتور + تاریخ فاکتور به عنوان کلید Map
                     assert issuedDate != null;
-                    InvoiceDto invoiceDto = invoicesMap.computeIfAbsent(
-                            String.valueOf(invoiceNumber).concat(issuedDate.format(DateTimeFormatter.BASIC_ISO_DATE)), k -> {
+                    InvoiceDto invoiceDto = invoicesMap.computeIfAbsent(index, k -> {
                         InvoiceDto dto = new InvoiceDto();
                         dto.setInvoiceNumber(invoiceNumber);
                         dto.setIssuedDate(issuedDate);
@@ -380,8 +395,8 @@ public class InvoiceService {
                     itemDto.setWarehouseReceiptId(warehouseReceipt.getId());
                     invoiceDto.getInvoiceItems().add(itemDto);
 
-                } catch (Exception e) {
-                    throw new RuntimeException("خطا در ردیف " + rowNum + ": " + e.getMessage(), e);
+                } catch (RowColumnException e) {
+                    throw new RuntimeException(e.getMessage());
                 }
             }
         }
@@ -400,7 +415,7 @@ public class InvoiceService {
                     if (invoiceDto.getYearId() != null) {
                         entity.setYear(entityManager.find(Year.class, invoiceDto.getYearId()));
                     }
-                    if (invoiceDto.getInvoiceStatusId() != null){
+                    if (invoiceDto.getInvoiceStatusId() != null) {
                         entity.setInvoiceStatus(entityManager.find(InvoiceStatus.class, invoiceDto.getInvoiceStatusId()));
                     }
                     entity.getInvoiceItems().forEach(item -> {
@@ -410,9 +425,9 @@ public class InvoiceService {
                             item.setProduct(product);
                         }
                         if (item.getWarehouseReceiptId() != null) {
-                            WarehouseReceipt warehouseReceipt = entityManager.find(WarehouseReceipt.class, item.getWarehouseReceiptId());
-                            warehouseReceipt.addInvoiceItem(item);
-                            item.setWarehouseReceipt(warehouseReceipt);
+                            WarehouseReceipt receipt = entityManager.find(WarehouseReceipt.class, item.getWarehouseReceiptId());
+                            receipt.addInvoiceItem(item);
+                            item.setWarehouseReceipt(receipt);
                         }
                         item.setInvoice(entity);
                     });
@@ -421,20 +436,21 @@ public class InvoiceService {
                 .collect(Collectors.toList());
 
         List<Invoice> invoiceList = invoiceRepository.saveAll(invoices);
-        Map<WarehouseReceipt, InvoiceItem> warehouseReceiptInvoiceItemMap = invoiceList.stream()
+
+
+        List<WarehouseInvoice> warehouseInvoiceList = invoiceList.stream()
                 .flatMap(invoice -> invoice.getInvoiceItems().stream())
                 .map(invoiceItem -> new AbstractMap.SimpleEntry<>(invoiceItem.getWarehouseReceipt(), invoiceItem))
-                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
-
-        List<WarehouseInvoice> warehouseInvoices = warehouseReceiptInvoiceItemMap.entrySet().stream()
-                .map(entry -> {
-                    WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue))
+                .entrySet().stream().map(entry -> {
+                    WarehouseInvoice warehouseInvoice = warehouseInvoiceRepository.findWarehouseInvoiceByReceiptId(entry.getKey().getId());
                     warehouseInvoice.setInvoice(entry.getValue().getInvoice());
                     warehouseInvoice.setWarehouseReceipt(entry.getKey());
                     return warehouseInvoice;
-                }).collect(Collectors.toList());
+                })
+                .map(warehouseInvoiceRepository::save)
+                .toList();
 
-        warehouseInvoiceRepository.saveAll(warehouseInvoices);
         return invoiceList.size() + " invoices created";
     }
 
@@ -550,7 +566,8 @@ public class InvoiceService {
             cell.setCellStyle(headerCellStyle);
         }
     }
-    private String convertToPersianCaption(String salesType ){
+
+    private String convertToPersianCaption(String salesType) {
         return switch (salesType) {
             case "CASH_SALES" -> "فروش نقدی";
             case "CONTRACTUAL_SALES" -> "فروش قراردادی";
@@ -599,7 +616,6 @@ public class InvoiceService {
         Specification<Invoice> specification = InvoiceSpecification.bySearchCriteria(search);
         return invoiceRepository.findAll(specification);
     }
-
 
 
 }
