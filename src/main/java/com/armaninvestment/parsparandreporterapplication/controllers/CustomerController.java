@@ -24,7 +24,7 @@ public class CustomerController {
     @GetMapping(path = {"", "/"})
     public ResponseEntity<Page<CustomerDto>> getAllCustomersByCriteria(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
             @RequestParam(required = false) Boolean bigCustomer, // Add this line to handle bigCustomer explicitly

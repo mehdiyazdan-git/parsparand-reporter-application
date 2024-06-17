@@ -21,7 +21,7 @@ public class YearController {
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<YearDto>> getAllYearsByCriteria(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
             YearSearch search) {

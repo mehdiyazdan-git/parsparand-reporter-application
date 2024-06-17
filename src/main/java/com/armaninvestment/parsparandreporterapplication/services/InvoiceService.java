@@ -329,8 +329,8 @@ public class InvoiceService {
                 try {
                     String index = ExcelUtils.getCellStringValue(currentRow, 0, rowNum);
                     Long invoiceNumber = ExcelUtils.getCellLongValue(currentRow, 1, rowNum);
-                    LocalDate issuedDate = ExcelUtils.convertToDate(ExcelUtils.getCellStringValue(currentRow, 2, rowNum));
-                    LocalDate dueDate = ExcelUtils.convertToDate(ExcelUtils.getCellStringValue(currentRow, 3, rowNum));
+                    LocalDate issuedDate = DateConvertor.convertJalaliToGregorian(Objects.requireNonNull(getCellStringValue(currentRow, 2, rowNum)));
+                    LocalDate dueDate = DateConvertor.convertJalaliToGregorian(Objects.requireNonNull(getCellStringValue(currentRow, 3, rowNum)));
                     String salesType = ExcelUtils.getCellStringValue(currentRow, 4, rowNum);
                     String contractNumber = ExcelUtils.getCellStringValue(currentRow, 5, rowNum);
                     String customerCode = ExcelUtils.getCellStringValue(currentRow, 6, rowNum);

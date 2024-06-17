@@ -49,8 +49,7 @@ public class WarehouseReceiptSpecification {
                 predicates.add(criteriaBuilder.like(root.get("customer").get("name"), "%" + searchCriteria.getCustomerName() + "%"));
             }
             if (searchCriteria.getJalaliYear() != null) {
-                Join<WarehouseReceipt, Year> yearJoin = root.join("year", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
+                predicates.add(criteriaBuilder.equal(root.get("jalaliYear"), searchCriteria.getJalaliYear()));
             }
             // If the search criteria contains a total quantity, create a subquery to find the sum of the quantities of the report items
 if (searchCriteria.getTotalQuantity() != null) {

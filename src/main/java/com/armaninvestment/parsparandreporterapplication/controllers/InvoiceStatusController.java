@@ -22,7 +22,7 @@ public class InvoiceStatusController {
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<InvoiceStatusDto>> getAllInvoiceStatusesByCriteria(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
             InvoiceStatusSearch search) {
