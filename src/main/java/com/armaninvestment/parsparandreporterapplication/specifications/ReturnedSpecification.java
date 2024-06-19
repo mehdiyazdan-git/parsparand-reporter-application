@@ -48,8 +48,7 @@ public class ReturnedSpecification {
                 predicates.add(criteriaBuilder.like(customerJoin.get("name"), "%" + searchCriteria.getCustomerName() + "%"));
             }
             if (searchCriteria.getJalaliYear() != null) {
-                Join<Returned, Year> yearJoin = root.join("year", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(yearJoin.get("name"), searchCriteria.getJalaliYear()));
+                predicates.add(criteriaBuilder.equal(root.get("jalaliYear"), searchCriteria.getJalaliYear()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

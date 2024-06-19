@@ -33,7 +33,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -175,6 +174,7 @@ public class InvoiceService {
         return new PageImpl<>(invoiceDtoList, pageRequest, getCount(invoiceSearch));
     }
 
+
     private Long getCount(InvoiceSearch invoiceSearch) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Long> cq = cb.createQuery(Long.class);
@@ -218,6 +218,7 @@ public class InvoiceService {
         var invoiceEntity = invoiceRepository.findById(id).orElseThrow();
         return invoiceMapper.toDto(invoiceEntity);
     }
+
 
     @Transactional
     public InvoiceDto createInvoice(InvoiceDto invoiceDto) {

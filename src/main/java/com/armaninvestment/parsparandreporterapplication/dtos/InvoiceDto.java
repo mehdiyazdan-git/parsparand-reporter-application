@@ -39,6 +39,5 @@ public class InvoiceDto implements Serializable {
     private Long yearId;
     private Long totalQuantity;
     private Double totalPrice;
-
     private Set<InvoiceItemDto> invoiceItems = new LinkedHashSet<>();
 }

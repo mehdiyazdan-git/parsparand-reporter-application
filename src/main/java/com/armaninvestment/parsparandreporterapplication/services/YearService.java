@@ -43,8 +43,9 @@ public class YearService {
     }
     public List<YearDto> yearSelect(YearSearch searchParam) {
         Specification<Year> specification = YearSpecification.bySearchCriteria(searchParam);
+        Sort sort = Sort.by(Sort.Direction.DESC, "name");
         return yearRepository
-                .findAll(specification)
+                .findAll(specification, sort)
                 .stream()
                 .map(yearMapper::toDto)
                 .collect(Collectors.toList());
