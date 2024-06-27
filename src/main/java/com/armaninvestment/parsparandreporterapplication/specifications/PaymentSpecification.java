@@ -40,8 +40,7 @@ public class PaymentSpecification {
                 predicates.add(criteriaBuilder.equal(root.get("paymentSubject"),searchCriteria.getPaymentSubject()));
             }
             if (searchCriteria.getCustomerId() != null) {
-                Join<Payment, Customer> customerJoin = root.join("customer", JoinType.LEFT);
-                predicates.add(criteriaBuilder.equal(customerJoin.get("id"), searchCriteria.getCustomerId()));
+                predicates.add(criteriaBuilder.equal(root.get("customerId"), searchCriteria.getCustomerId()));
             }
             if (searchCriteria.getCustomerName() != null && !searchCriteria.getCustomerName().isEmpty()) {
                 Join<Payment, Customer> customerJoin = root.join("customer", JoinType.LEFT);
