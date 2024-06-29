@@ -3,27 +3,37 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 import com.armaninvestment.parsparandreporterapplication.dtos.CompanyReportDTO;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
+import com.armaninvestment.parsparandreporterapplication.entities.Report;
+import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.repositories.ReportRepository;
 import com.armaninvestment.parsparandreporterapplication.repositories.YearRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ReportService;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @CrossOrigin
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 public class ReportController {
+
+    private static final Logger logger = LogManager.getLogger(ReportController.class);
+
     private final ReportService reportService;
     private final ReportRepository reportRepository;
     private final YearRepository yearRepository;
@@ -73,7 +83,7 @@ public class ReportController {
         search.setSize(size);
         search.setSortBy(sortBy);
         search.setOrder(order);
-        byte[] excelData = reportService.exportReportsToExcel(search,exportAll);
+        byte[] excelData = reportService.exportReportsToExcel(search, exportAll);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         headers.setContentDisposition(ContentDisposition.attachment()
@@ -88,11 +98,11 @@ public class ReportController {
             String list = reportService.importReportsFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error in method importReportsFromExcel: Failed to import reports from Excel file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import reports from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error in method importReportsFromExcel: Error processing Excel file", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }
@@ -105,8 +115,7 @@ public class ReportController {
             @RequestParam(required = false) Integer productType) {
 
         try {
-
-            long _year = Objects.requireNonNullElseGet(jalaliYear, () -> ( Objects.requireNonNull(DateConvertor.findYearFromLocalDate(LocalDate.now())).getName()));
+            long _year = Objects.requireNonNullElseGet(jalaliYear, () -> (Objects.requireNonNull(DateConvertor.findYearFromLocalDate(LocalDate.now())).getName()));
             int _month = month == null ? 1 : month;
             int _productType = productType == null ? 2 : productType;
 
@@ -123,15 +132,17 @@ public class ReportController {
                 return dto;
             }).toList();
             return ResponseEntity.ok(list);
-        }catch (Exception e){
-            e.printStackTrace();
+        } catch (Exception e) {
+            logger.error("Error in method getMonthlyReportByProduct: Error generating monthly report by product", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
     }
-    @GetMapping(path = "/sales-by-year/{yearName}/{productType}")
+
+    @GetMapping(path = "/sales-by-year")
     public ResponseEntity<List<SalesByYearGroupByMonth>> getSalesByYearGroupByMonth(
-            @PathVariable("yearName") Short yearName,
-            @PathVariable("productType") Integer productType) {
+            @RequestParam(name= "yearName",required = false ) Short yearName,
+            @RequestParam(name = "productType",required = false) Integer productType) {
         return ResponseEntity.ok(reportService.findSalesByYearGroupByMonth(yearName, productType));
     }
+
 }

@@ -346,10 +346,14 @@ public class ReportService {
         reportRepository.saveAll(reports);
         return reports.size() + " گزارش با موفقیت وارد شدند.";
     }
-
+    private Year getMaxYear() {
+        return yearRepository.findFirstByOrderByNameDesc();
+    }
 
     public List<SalesByYearGroupByMonth> findSalesByYearGroupByMonth(Short yearName, Integer productType) {
-        List<Object[]> results = reportRepository.getSalesByYearGroupByMonth(yearName, productType);
+        Short yearNameParam = (Short) Objects.requireNonNullElseGet(yearName, () -> getMaxYear().getName());
+
+        List<Object[]> results = reportRepository.getSalesByYearGroupByMonth(yearNameParam, productType);
         List<SalesByYearGroupByMonth> list = new ArrayList<>();
 
         // Create a map to store the results by month number
