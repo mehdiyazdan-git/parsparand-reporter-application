@@ -52,7 +52,7 @@ public class WarehouseReceiptSpecification {
                 predicates.add(criteriaBuilder.equal(root.get("jalaliYear"), searchCriteria.getJalaliYear()));
             }
             // If the search criteria contains a total quantity, create a subquery to find the sum of the quantities of the report items
-if (searchCriteria.getTotalQuantity() != null) {
+            if (searchCriteria.getTotalQuantity() != null) {
                 Subquery<Long> subquery = query.subquery(Long.class);
                 // Start from the ReportItem class
                 Root<ReportItem> subRoot = subquery.from(ReportItem.class);

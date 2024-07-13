@@ -6,12 +6,12 @@ import com.armaninvestment.parsparandreporterapplication.repositories.InvoiceRep
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import com.armaninvestment.parsparandreporterapplication.services.InvoiceService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 
 @CrossOrigin
@@ -21,6 +21,7 @@ import java.util.List;
 public class InvoiceController {
     private final InvoiceService invoiceService;
     private final InvoiceRepository invoiceRepository;
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(InvoiceController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<InvoiceDto>> getAllInvoicesByCriteria(
@@ -117,14 +118,14 @@ public class InvoiceController {
             String list = invoiceService.importInvoicesFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (RuntimeException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .header(HttpHeaders.CONTENT_ENCODING, "UTF-8")
                     .header(HttpHeaders.CONTENT_TYPE, "text/plain;charset=UTF-8")
                     .body(e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .header(HttpHeaders.CONTENT_ENCODING, "UTF-8")

@@ -26,6 +26,7 @@ public class InvoiceSearch implements Serializable {
     @Enumerated(EnumType.STRING)
     private SalesType salesType;
     private String customerName;
+    private Long customerId;
     private Long contractId;
     private String contractNumber;
     private String invoiceStatusName;

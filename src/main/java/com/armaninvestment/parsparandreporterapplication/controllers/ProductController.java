@@ -6,6 +6,7 @@ import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +21,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(ProductController.class);
 
     @GetMapping(path = {"/", ""})
-    public ResponseEntity<Page<ProductDto>> getAllProductsByCriteria(
+    public ResponseEntity<?> getAllProductsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
@@ -30,8 +32,13 @@ public class ProductController {
             @RequestParam(required = false) ProductType productType,
             ProductSearch search) {
         search.setProductType(productType);
-        Page<ProductDto> products = productService.findProductByCriteria(search, page, size, sortBy, order);
-        return ResponseEntity.ok(products);
+        try {
+            Page<ProductDto> products = productService.findProductByCriteria(search, page, size, sortBy, order);
+            return ResponseEntity.ok(products);
+        }catch (Exception e){
+            logger.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
     }
 
     @GetMapping(path = "/select")
@@ -49,9 +56,9 @@ public class ProductController {
     @PostMapping(path = {"/", ""})
     public ResponseEntity<?> createProduct(@RequestBody ProductDto productDto){
        try {
-           return ResponseEntity.ok(productService.createProduct(productDto));
+           return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(productDto));
        }catch (Exception e){
-           e.printStackTrace();
+           logger.error(e.getMessage());
            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
        }
     }
@@ -61,7 +68,7 @@ public class ProductController {
         try {
             return ResponseEntity.ok(productService.updateProduct(id, productDto));
         }catch (Exception e){
-            e.printStackTrace();
+               logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
@@ -89,11 +96,13 @@ public class ProductController {
             String list = productService.importProductsFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+
+            logger.error("Failed to import products from Excel file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import products from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+
+            logger.error("Failed to import products from Excel file", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

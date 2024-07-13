@@ -113,7 +113,14 @@ public class InvoiceService {
                 root.get("jalaliYear")
         );
 
-        // Sorting
+        /*  Sorting
+            This block is responsible for sorting the results of the query based on the provided sortBy and sortDir parameters.
+            It uses a switch statement to determine the appropriate sorting expression based on the sortBy parameter.
+            The sorting direction is determined by the sortDir parameter, which is checked using the equalsIgnoreCase method.
+            If the sortDir is "asc", the ascending order is used, otherwise, the descending order is used. The sorting
+            e expression is then added to the query using the orderBy method of the CriteriaBuilder object.
+            If the sortBy parameter is not provided or is null, the default sorting expression is used, which sorts the results by the id field in ascending order.
+         */
         switch (Objects.requireNonNull(sortBy)) {
             case "totalPrice" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalPrice) : cb.desc(totalPrice));
             case "totalQuantity" ->

@@ -6,6 +6,7 @@ import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.searchForms.CustomerSearch;
 import com.armaninvestment.parsparandreporterapplication.services.CustomerService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CustomerController {
     private final CustomerService customerService;
+    //log4j
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(CustomerController.class);
 
     @GetMapping(path = {"", "/"})
     public ResponseEntity<Page<CustomerDto>> getAllCustomersByCriteria(
@@ -45,6 +48,7 @@ public class CustomerController {
         List<CustomerSelect> customers = customerService.findAllCustomerSelect(searchQuery,sortBy,order);
         return ResponseEntity.ok(customers);
     }
+
     @GetMapping("/{customerId}/summary")
     public ClientSummaryResult getClientSummary(@PathVariable Long customerId) {
         return customerService.getClientSummaryByCustomerId(customerId);
@@ -57,7 +61,7 @@ public class CustomerController {
 
     @PostMapping(path = {"/", ""})
     public ResponseEntity<CustomerDto> createCustomer(@RequestBody CustomerDto customerDto){
-        return ResponseEntity.ok(customerService.createCustomer(customerDto));
+        return ResponseEntity.status(HttpStatus.CREATED).body(customerService.createCustomer(customerDto));
     }
 
     @PutMapping(path = {"/{id}"})
@@ -88,11 +92,12 @@ public class CustomerController {
             String list = customerService.importCustomersFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to import customers from Excel file: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import customers from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+
+            logger.error("Failed to import customers from Excel file: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

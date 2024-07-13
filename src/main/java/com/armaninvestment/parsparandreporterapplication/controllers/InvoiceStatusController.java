@@ -4,6 +4,7 @@ import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceStatusDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceStatusSearch;
 import com.armaninvestment.parsparandreporterapplication.services.InvoiceStatusService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InvoiceStatusController {
     private final InvoiceStatusService invoiceStatusService;
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(InvoiceStatusController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<InvoiceStatusDto>> getAllInvoiceStatusesByCriteria(
@@ -72,11 +74,11 @@ public class InvoiceStatusController {
             String list = invoiceStatusService.importInvoiceStatusesFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error importing invoice statuses from Excel file: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import invoice statuses from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error processing Excel file: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

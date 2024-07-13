@@ -4,6 +4,7 @@ import com.armaninvestment.parsparandreporterapplication.dtos.ReturnedDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReturnedSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ReturnedService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class ReturnedController {
     private final ReturnedService returnedService;
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(ReturnedController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ReturnedDto>> getAllReturnedsByCriteria(
@@ -34,7 +36,7 @@ public class ReturnedController {
         try {
             return ResponseEntity.ok(returnedService.getReturnedById(id));
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
@@ -44,7 +46,7 @@ public class ReturnedController {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(returnedService.createReturned(returnedDto));
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
@@ -54,7 +56,7 @@ public class ReturnedController {
         try {
             return ResponseEntity.ok(returnedService.updateReturned(id, returnedDto));
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
@@ -65,7 +67,8 @@ public class ReturnedController {
             returnedService.deleteReturned(id);
             return ResponseEntity.noContent().build();
         }catch (Exception e){
-            e.printStackTrace();
+
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
@@ -98,11 +101,13 @@ public class ReturnedController {
             String list = returnedService.importReturnedsFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import returners from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

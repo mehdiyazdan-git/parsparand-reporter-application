@@ -16,6 +16,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class AdjustmentController {
     private final AdjustmentService adjustmentService;
+    // implement log4j
+    private static final org.apache.logging.log4j.Logger logger = org.apache.logging.log4j.LogManager.getLogger(AdjustmentController.class);
 
     @GetMapping
     public ResponseEntity<Page<AdjustmentDto>> getAllAdjustmentsByCriteria(
@@ -33,7 +35,7 @@ public class AdjustmentController {
         try {
             return ResponseEntity.ok(adjustmentService.getAdjustmentById(id));
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
@@ -43,7 +45,7 @@ public class AdjustmentController {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(adjustmentService.createAdjustment(adjustmentDto));
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
@@ -53,7 +55,7 @@ public class AdjustmentController {
         try {
             return ResponseEntity.ok(adjustmentService.updateAdjustment(id, adjustmentDto));
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
@@ -64,7 +66,7 @@ public class AdjustmentController {
             adjustmentService.deleteAdjustment(id);
             return ResponseEntity.noContent().build();
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
@@ -86,15 +88,15 @@ public class AdjustmentController {
             String result = adjustmentService.importAdjustmentsFromExcel(file);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import adjustments from Excel file: " + e.getMessage());
         } catch (IllegalStateException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Error processing Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

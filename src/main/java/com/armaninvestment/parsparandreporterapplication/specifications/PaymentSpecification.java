@@ -39,12 +39,11 @@ public class PaymentSpecification {
             if (searchCriteria.getPaymentSubject() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("paymentSubject"),searchCriteria.getPaymentSubject()));
             }
-            if (searchCriteria.getCustomerId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("customerId"), searchCriteria.getCustomerId()));
+            if (searchCriteria.getCustomerId() != null ) {
+                predicates.add(criteriaBuilder.equal(root.get("customer").get("id"), searchCriteria.getCustomerId()));
             }
             if (searchCriteria.getCustomerName() != null && !searchCriteria.getCustomerName().isEmpty()) {
-                Join<Payment, Customer> customerJoin = root.join("customer", JoinType.LEFT);
-                predicates.add(criteriaBuilder.like(customerJoin.get("name"), "%" + searchCriteria.getCustomerName() + "%"));
+                predicates.add(criteriaBuilder.equal(root.get("customer").get("name"),"%" + searchCriteria.getCustomerName() + "%"));
             }
             if (searchCriteria.getYearName() != null) {
                 Join<Payment, Year> yearJoin = root.join("year", JoinType.LEFT);

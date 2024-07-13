@@ -6,6 +6,8 @@ import com.armaninvestment.parsparandreporterapplication.searchForms.PaymentSear
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class PaymentController {
     private final PaymentService paymentService;
+    // log4j
+        private static final Logger logger = LogManager.getLogger(PaymentController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<PaymentDto>> getAllPaymentsByCriteria(
@@ -41,6 +45,7 @@ public class PaymentController {
         try {
             return ResponseEntity.ok(paymentService.createPayment(paymentDto));
         }catch (Exception e){
+            logger.error(e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -90,11 +95,12 @@ public class PaymentController {
             String list = paymentService.importPaymentsFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+
+            logger.error("Failed to import payments from Excel file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import payments from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to import payments from Excel file", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

@@ -4,6 +4,7 @@ import com.armaninvestment.parsparandreporterapplication.dtos.YearDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.YearSearch;
 import com.armaninvestment.parsparandreporterapplication.services.YearService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class YearController {
     private final YearService yearService;
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(YearController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<YearDto>> getAllYearsByCriteria(
@@ -80,11 +82,12 @@ public class YearController {
             String list = yearService.importYearsFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+
+            logger.error("Error importing years from Excel file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import years from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error processing Excel file", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

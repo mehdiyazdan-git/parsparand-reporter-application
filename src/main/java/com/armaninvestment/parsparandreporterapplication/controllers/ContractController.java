@@ -19,6 +19,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContractController {
     private final ContractService contractService;
+    // log4j
+    private static final org.apache.logging.log4j.Logger logger = org.apache.logging.log4j.LogManager.getLogger(ContractController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ContractDto>> getAllContractsByCriteria(
@@ -90,11 +92,11 @@ public class ContractController {
             String list = contractService.importContractsFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import contracts from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

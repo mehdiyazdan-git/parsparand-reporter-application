@@ -5,6 +5,8 @@ import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptSe
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.services.WarehouseReceiptService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WarehouseReceiptController {
     private final WarehouseReceiptService warehouseReceiptService;
+    //log4j
+        private static final Logger logger = LoggerFactory.getLogger(WarehouseReceiptController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<WarehouseReceiptDto>> getAllWarehouseReceiptsByCriteria(
@@ -49,7 +53,7 @@ public class WarehouseReceiptController {
        try {
            return ResponseEntity.ok(warehouseReceiptService.findAllWarehouseReceiptSelect(searchQuery,yearId));
        }catch (Exception e){
-             e.printStackTrace();
+               logger.error("Error occurred while fetching warehouse receipts: ", e);
            return ResponseEntity.badRequest().body(null);
        }
     }
@@ -59,7 +63,7 @@ public class WarehouseReceiptController {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(warehouseReceiptService.createWarehouseReceipt(warehouseReceiptDto));
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error("Error occurred while creating warehouse receipt: ", e);
             return ResponseEntity.badRequest().body(null);
         }
     }
@@ -110,13 +114,13 @@ public class WarehouseReceiptController {
             String list = warehouseReceiptService.importWarehouseReceiptsFromExcel(file);
             return ResponseEntity.ok().headers(headers).body(list);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error occurred while importing warehouse receipts from Excel: ",e);
             String errorMessage = "خطا در بارگذاری: " + e.getMessage();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .headers(headers)
                     .body(errorMessage);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error occurred while importing warehouse receipts from Excel: ", e);
             String errorMessage = "خطا در پردازش فایل لکسل: " + e.getMessage();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .headers(headers)

@@ -1,11 +1,11 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.CustomerSelect;
 import com.armaninvestment.parsparandreporterapplication.dtos.UserDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.UserSelectDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.UserSearch;
 import com.armaninvestment.parsparandreporterapplication.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(UserController.class);
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<UserDto>> getAllUsersByCriteria(
@@ -76,11 +77,11 @@ public class UserController {
             String list = userService.importUsersFromExcel(file);
             return ResponseEntity.ok(list);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to import users from Excel file: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to import users from Excel file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to import users from Excel file: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error processing Excel file: " + e.getMessage());
         }

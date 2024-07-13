@@ -27,12 +27,16 @@ public class InvoiceSpecification {
             if (searchCriteria.getInvoiceNumber() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("invoiceNumber"), searchCriteria.getInvoiceNumber()));
             }
-            if (searchCriteria.getContractNumber() != null && !searchCriteria.getContractNumber().isEmpty()) {
-                Join<Invoice, Contract> contractJoin = root.join("contract", JoinType.INNER);
+            if(searchCriteria.getContractId() != null) {
+                Join<Invoice, Contract> contractJoin = root.join("contract", JoinType.LEFT);
+                predicates.add(criteriaBuilder.equal(contractJoin.get("id"), searchCriteria.getContractId()));
+            }
+            if(searchCriteria.getCustomerName() != null) {
+                Join<Invoice, Contract> contractJoin = root.join("contract", JoinType.LEFT);
                 predicates.add(criteriaBuilder.equal(contractJoin.get("contractNumber"), searchCriteria.getContractNumber()));
             }
-            if(searchCriteria.getContractId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("contractId"), searchCriteria.getContractId()));
+            if(searchCriteria.getCustomerId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("customer").get("id"), searchCriteria.getCustomerId()));
             }
             if (searchCriteria.getIssuedDate() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("issuedDate"), searchCriteria.getIssuedDate()));
