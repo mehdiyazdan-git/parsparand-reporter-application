@@ -3,28 +3,24 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 import com.armaninvestment.parsparandreporterapplication.dtos.CompanyReportDTO;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
-import com.armaninvestment.parsparandreporterapplication.entities.Report;
-import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.repositories.ReportRepository;
 import com.armaninvestment.parsparandreporterapplication.repositories.YearRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ReportService;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 @CrossOrigin
 @RestController
@@ -56,7 +52,13 @@ public class ReportController {
 
     @PostMapping(path = {"/", ""})
     public ResponseEntity<ReportDto> createReport(@RequestBody ReportDto reportDto){
-        return ResponseEntity.ok(reportService.createReport(reportDto));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(reportService.createReport(reportDto));
+        }catch (IllegalArgumentException | EntityNotFoundException ex){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            }catch (Exception ex){
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     @PutMapping(path = {"/{id}"})
@@ -66,8 +68,14 @@ public class ReportController {
 
     @DeleteMapping(path = {"/{id}"})
     public ResponseEntity<Void> deleteReport(@PathVariable Long id){
-        reportService.deleteReport(id);
-        return ResponseEntity.noContent().build();
+        try {
+            reportService.deleteReport(id);
+            return ResponseEntity.noContent().build();
+        }catch (IllegalArgumentException | IllegalStateException | EntityNotFoundException ex){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception ex){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/download-all-reports.xlsx")

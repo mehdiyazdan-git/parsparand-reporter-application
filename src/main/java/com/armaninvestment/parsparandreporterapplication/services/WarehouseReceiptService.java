@@ -65,7 +65,7 @@ public class WarehouseReceiptService {
         Expression<Double> totalPrice = cb.sum(cb.prod(cb.toDouble(warehouseReceiptItemJoin.get("unitPrice")), cb.toDouble(warehouseReceiptItemJoin.get("quantity"))));
 
         // Select
-        cq.multiselect(
+        CriteriaQuery<Tuple> multiselect = cq.multiselect(
                 root.get("id").alias("id"),
                 root.get("warehouseReceiptDate").alias("warehouseReceiptDate"),
                 root.get("warehouseReceiptDescription").alias("warehouseReceiptDescription"),

@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
+import com.armaninvestment.parsparandreporterapplication.controllers.ProductController;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Product;
@@ -11,6 +12,7 @@ import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSear
 import com.armaninvestment.parsparandreporterapplication.specifications.ProductSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -34,6 +36,7 @@ import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils
 public class ProductService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(ProductService.class);
 
     public Page<ProductDto> findProductByCriteria(ProductSearch search, int page, int size, String sortBy, String order) {
         Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
@@ -147,16 +150,20 @@ public class ProductService {
     private void validateProductUniqueness(String productName, String productCode, Long id) {
         if (id == null) {
             if (productRepository.existsByProductName(productName)) {
+                logger.error("محصول با این نام {} وجود دارد.", productName);
                 throw new IllegalStateException("محصول با این نام وجود دارد.");
             }
             if (productRepository.existsByProductCode(productCode)) {
+                logger.error("محصول با کد {} وجود دارد.", productCode);
                 throw new IllegalStateException("محصول با این کد وجود دارد.");
             }
         } else {
             if (productRepository.existsByProductNameAndAndIdNot(productName, id)) {
+                logger.error("محصول با نام {} وجود دارد.", productName);
                 throw new IllegalStateException("محصول با این نام وجود دارد.");
             }
             if (productRepository.existsByProductCodeAndAndIdNot(productCode, id)) {
+                logger.error("محصول با کد {} وجود دارد.", productCode);
                 throw new IllegalStateException("محصول با این کد وجود دارد.");
             }
         }

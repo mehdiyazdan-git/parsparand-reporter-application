@@ -57,6 +57,9 @@ public class ProductController {
     public ResponseEntity<?> createProduct(@RequestBody ProductDto productDto){
        try {
            return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(productDto));
+       }catch (IllegalStateException e){
+           logger.error(e.getMessage());
+           return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
        }catch (Exception e){
            logger.error(e.getMessage());
            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
@@ -67,16 +70,27 @@ public class ProductController {
     public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody ProductDto productDto){
         try {
             return ResponseEntity.ok(productService.updateProduct(id, productDto));
+        }catch (IllegalStateException e){
+            logger.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }catch (Exception e){
-               logger.error(e.getMessage());
+            logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 
     @DeleteMapping(path = {"/{id}"})
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id){
-        productService.deleteProduct(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id){
+        try {
+            productService.deleteProduct(id);
+            return ResponseEntity.noContent().build();
+        }catch (IllegalStateException e){
+            logger.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }catch (Exception e){
+            logger.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
     }
 
     @GetMapping("/download-all-products.xlsx")
