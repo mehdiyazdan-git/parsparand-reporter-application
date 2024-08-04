@@ -54,6 +54,7 @@ public class CustomerService {
                 .map(customerMapper::toSelectDto)
                 .collect(Collectors.toList());
     }
+
     public CustomerDto getCustomerById(Long id) {
         var customerEntity = customerRepository.findById(id).orElseThrow();
         return customerMapper.toDto(customerEntity);
@@ -127,6 +128,13 @@ public class CustomerService {
     }
 
     public ClientSummaryResult getClientSummaryByCustomerId(Long customerId) {
+        if (customerId == null){
+            customerId = customerRepository
+                    .findAll()
+                    .stream()
+                    .map(customerMapper::toSelectDto)
+                    .toList().get(0).getId();
+        }
         List<Object[]> objects = warehouseReceiptItemRepository.getClientSummaryByCustomerId(customerId);
         List<ClientSummaryDTO> list = new ArrayList<>();
         for (Object[] obj : objects) {

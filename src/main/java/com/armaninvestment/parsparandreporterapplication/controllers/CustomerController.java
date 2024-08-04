@@ -49,8 +49,8 @@ public class CustomerController {
         return ResponseEntity.ok(customers);
     }
 
-    @GetMapping("/{customerId}/summary")
-    public ClientSummaryResult getClientSummary(@PathVariable Long customerId) {
+    @GetMapping("/summary")
+    public ClientSummaryResult getClientSummary(@RequestParam(required = false) Long customerId) {
         return customerService.getClientSummaryByCustomerId(customerId);
     }
 
