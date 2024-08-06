@@ -123,11 +123,11 @@ public class ReportController {
             @RequestParam(required = false) Integer productType) {
 
         try {
-            long _year = Objects.requireNonNullElseGet(jalaliYear, () -> (Objects.requireNonNull(DateConvertor.findYearFromLocalDate(LocalDate.now())).getName()));
+            Integer _year = Math.toIntExact(Objects.requireNonNullElseGet(jalaliYear, () -> (Objects.requireNonNull(DateConvertor.findYearFromLocalDate(LocalDate.now())).getName())));
             int _month = month == null ? 1 : month;
             int _productType = productType == null ? 2 : productType;
 
-            List<Object[]> resultSet = reportRepository.getReport((int) _year, _month, _productType);
+            List<Object[]> resultSet = reportRepository.getSalesByYearGroupByMonthFilterByProductType(_year, _month, _productType);
             List<CompanyReportDTO> list = resultSet.stream().map(obj -> {
                 CompanyReportDTO dto = new CompanyReportDTO();
                 dto.setId((Long) obj[0]);
