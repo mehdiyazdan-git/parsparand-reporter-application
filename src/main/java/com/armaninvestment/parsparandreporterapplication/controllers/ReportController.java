@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -32,7 +33,6 @@ public class ReportController {
 
     private final ReportService reportService;
     private final ReportRepository reportRepository;
-    private final YearRepository yearRepository;
 
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<ReportDto>> getAllReportsByCriteria(
@@ -123,20 +123,19 @@ public class ReportController {
             @RequestParam(required = false) Integer productType) {
 
         try {
-            Integer _year = Math.toIntExact(Objects.requireNonNullElseGet(jalaliYear, () -> (Objects.requireNonNull(DateConvertor.findYearFromLocalDate(LocalDate.now())).getName())));
+            int _year = Math.toIntExact(Objects.requireNonNullElseGet(jalaliYear, () -> (Objects.requireNonNull(DateConvertor.findYearFromLocalDate(LocalDate.now())).getName())));
             int _month = month == null ? 1 : month;
             int _productType = productType == null ? 2 : productType;
 
             List<Object[]> resultSet = reportRepository.getSalesByYearGroupByMonthFilterByProductType(_year, _month, _productType);
             List<CompanyReportDTO> list = resultSet.stream().map(obj -> {
                 CompanyReportDTO dto = new CompanyReportDTO();
-                dto.setId((Long) obj[0]);
-                dto.setCustomerName((String) obj[1]);
-                dto.setTotalQuantity((Long) obj[2]);
-                dto.setTotalAmount((Long) obj[3]);
-                dto.setCumulativeTotalQuantity((Long) obj[4]);
-                dto.setCumulativeTotalAmount((Long) obj[5]);
-                dto.setAvgUnitPrice((Long) obj[6]);
+                dto.setCustomerName((String) obj[0]);
+                dto.setTotalQuantity((Long) obj[1]);
+                dto.setTotalAmount((BigDecimal) obj[2]);
+                dto.setCumulativeTotalQuantity((Long) obj[3]);
+                dto.setCumulativeTotalAmount((BigDecimal) obj[4]);
+                dto.setAvgUnitPrice((BigDecimal) obj[5]);
                 return dto;
             }).toList();
             return ResponseEntity.ok(list);
@@ -148,9 +147,9 @@ public class ReportController {
 
     @GetMapping(path = "/sales-by-year")
     public ResponseEntity<List<SalesByYearGroupByMonth>> getSalesByYearGroupByMonth(
-            @RequestParam(name= "yearName",required = false ) Short yearName,
+            @RequestParam(name= "yearName",required = false) String yearName,
             @RequestParam(name = "productType",required = false) Integer productType) {
-        return ResponseEntity.ok(reportService.findSalesByYearGroupByMonth(yearName, productType));
+        return ResponseEntity.ok(reportService.findSalesByYearGroupByMonth(Integer.valueOf(yearName), productType));
     }
 
 }

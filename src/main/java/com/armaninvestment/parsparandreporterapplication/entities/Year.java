@@ -19,7 +19,7 @@ public class Year{
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "name")
+    @Column(name = "name", unique = true)
     private Long name;
 
     @OneToMany(mappedBy = "year")

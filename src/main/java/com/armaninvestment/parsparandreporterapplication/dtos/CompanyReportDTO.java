@@ -7,18 +7,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CompanyReportDTO implements Serializable {
-    @Id
-    private Long id;
     private String customerName;
-    private Long totalAmount;
+    private BigDecimal totalAmount;
     private Long totalQuantity;
     private Long cumulativeTotalQuantity;
-    private Long cumulativeTotalAmount;
-    private Long avgUnitPrice;
+    private BigDecimal cumulativeTotalAmount;
+    private BigDecimal avgUnitPrice;
 }

@@ -1,6 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.YearDto;
+import com.armaninvestment.parsparandreporterapplication.entities.Year;
 import com.armaninvestment.parsparandreporterapplication.searchForms.YearSearch;
 import com.armaninvestment.parsparandreporterapplication.services.YearService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @CrossOrigin
 @RestController
@@ -20,7 +22,7 @@ public class YearController {
     private final YearService yearService;
     Logger logger = org.apache.logging.log4j.LogManager.getLogger(YearController.class);
 
-    @GetMapping(path = {"/", ""})
+    @GetMapping(path = {"page/", "page"})
     public ResponseEntity<Page<YearDto>> getAllYearsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -31,17 +33,12 @@ public class YearController {
         return ResponseEntity.ok(years);
     }
     @GetMapping(path = "/select")
-    public ResponseEntity<?> yearSelect(@RequestParam(required = false) String searchQuery) {
-        YearSearch yearSearch = new YearSearch();
-        if (searchQuery != null) {
-            try {
-                Long name = Long.parseLong(searchQuery);
-                yearSearch.setName(name);
-            } catch (NumberFormatException e) {
-               return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-            }
-        }
-        return ResponseEntity.ok(yearService.yearSelect(yearSearch));
+    public ResponseEntity<?> yearSelect() {
+        return ResponseEntity.ok(yearService.yearSelect());
+    }
+    @GetMapping(path = {"/",""})
+    public List<Year> getAllYears() {
+        return yearService.getAllYears();
     }
 
     @GetMapping(path = {"/{id}"})

@@ -350,8 +350,8 @@ public class ReportService {
         return yearRepository.findFirstByOrderByNameDesc();
     }
 
-    public List<SalesByYearGroupByMonth> findSalesByYearGroupByMonth(Short yearName, Integer productType) {
-        Short yearNameParam = (Short) Objects.requireNonNullElseGet(yearName, () -> getMaxYear().getName());
+    public List<SalesByYearGroupByMonth> findSalesByYearGroupByMonth(Integer yearName, Integer productType) {
+        Integer yearNameParam = (Integer) Objects.requireNonNullElseGet(yearName, () -> getMaxYear().getName());
 
         List<Object[]> results = reportRepository.getSalesByYearGroupByMonth(yearNameParam, productType);
         List<SalesByYearGroupByMonth> list = new ArrayList<>();

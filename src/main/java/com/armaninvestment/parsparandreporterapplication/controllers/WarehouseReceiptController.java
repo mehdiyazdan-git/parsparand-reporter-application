@@ -5,6 +5,7 @@ import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptSe
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.services.WarehouseReceiptService;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.TypeMismatchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -32,12 +33,17 @@ public class WarehouseReceiptController {
             @RequestParam(defaultValue = "ASC") String order,
             WarehouseReceiptSearch search) {
 
-        // اگر سال درخواست شده مشخص نباشد از سال جاری استفاده می شود
-        if (search.getJalaliYear() == null) {
-            search.setJalaliYear(warehouseReceiptService.getCurrentYear());
+
+        try {
+            if (search.getJalaliYear() == null) {
+                search.setJalaliYear(warehouseReceiptService.getCurrentYear());
+            }
+            Page<WarehouseReceiptDto> warehouseReceipts = warehouseReceiptService.findAll(page, size, sortBy, order, search);
+            return ResponseEntity.ok(warehouseReceipts);
+        }catch (TypeMismatchException e){
+            logger.error("Error occurred while fetching warehouse receipts: ", e);
+            return ResponseEntity.badRequest().body(null);
         }
-        Page<WarehouseReceiptDto> warehouseReceipts = warehouseReceiptService.findAll(page, size, sortBy, order, search);
-        return ResponseEntity.ok(warehouseReceipts);
     }
 
     @GetMapping(path = {"/{id}"})

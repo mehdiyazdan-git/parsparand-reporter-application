@@ -30,6 +30,4 @@ public class WarehouseReceiptSearch {
     private Integer size;
     private String sortBy;
     private String order;
-
-
 }

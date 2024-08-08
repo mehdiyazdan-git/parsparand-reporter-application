@@ -41,14 +41,14 @@ public class YearService {
         return yearRepository.findAll(specification, pageRequest)
                 .map(yearMapper::toDto);
     }
-    public List<YearDto> yearSelect(YearSearch searchParam) {
-        Specification<Year> specification = YearSpecification.bySearchCriteria(searchParam);
-        Sort sort = Sort.by(Sort.Direction.DESC, "name");
-        return yearRepository
-                .findAll(specification, sort)
-                .stream()
-                .map(yearMapper::toDto)
-                .collect(Collectors.toList());
+    public List<YearDto> yearSelect() {
+        var sort = Sort.by(Sort.Direction.DESC, "name");
+        return yearRepository.findAll(sort).stream()
+                        .map(yearMapper::toDto)
+                        .collect(Collectors.toList());
+    }
+    public List<Year> getAllYears() {
+        return yearRepository.findAll(Sort.by(Sort.Direction.DESC, "name"));
     }
 
     public YearDto createYear(YearDto yearDto) {

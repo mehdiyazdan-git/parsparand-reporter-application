@@ -3,7 +3,10 @@ package com.armaninvestment.parsparandreporterapplication.exceptions;
 import jakarta.persistence.EntityNotFoundException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -12,6 +15,7 @@ import org.springframework.util.StringUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -61,27 +65,36 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now());
     }
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public RestErrorResponse handleTypeMismatchException(HttpServletRequest request, final MethodArgumentTypeMismatchException ex) {
-        logger.error("requestURI: {}, errorMessage: {}", request.getRequestURI(), ex.getMessage());
+    public RestErrorResponse handleValidationExceptions(Exception ex) {
+        logger.error("Error in method handleValidationExceptions: ", ex);
+
+        String errorMessage = "Validation failed:";
+        if (ex instanceof MethodArgumentNotValidException) {
+            errorMessage += ((MethodArgumentNotValidException) ex).getBindingResult().getFieldErrors().stream()
+                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .collect(Collectors.joining(", "));
+        } else if (ex instanceof BindException) {
+            errorMessage
+ += ((BindException) ex).getFieldErrors().stream()
+                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .collect(Collectors.joining(", "));
+        }
+
         return new RestErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                getTypeMismatchErrorMessage(ex),
+                errorMessage,
                 LocalDateTime.now());
     }
 
-    private String getTypeMismatchErrorMessage(MethodArgumentTypeMismatchException ex) {
-        StringBuilder errorMessageBuilder = new StringBuilder();
-        if (StringUtils.hasText(ex.getName())) {
-            errorMessageBuilder.append(ex.getName());
-        } else {
-            errorMessageBuilder.append("Argument");
-        }
-        errorMessageBuilder.append(String.format(" [%s] نوع نادرست است. نوع صحیح %s است.",
-                ex.getValue(),
-                ex.getRequiredType()));
-
-        return errorMessageBuilder.toString();
+    @ExceptionHandler(TypeMismatchException.class) // Specific for TypeMismatchException
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public RestErrorResponse handleTypeMismatchException(HttpServletRequest request, final TypeMismatchException ex) {
+        logger.error("requestURI: {}, errorMessage: {}", request.getRequestURI(), ex.getMessage());
+        return new RestErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Type mismatch: " + ex.getMessage(),  // More general error message
+                LocalDateTime.now());
     }
 }
