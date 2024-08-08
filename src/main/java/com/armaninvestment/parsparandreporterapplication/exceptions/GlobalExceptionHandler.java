@@ -76,8 +76,7 @@ public class GlobalExceptionHandler {
                     .map(error -> error.getField() + ": " + error.getDefaultMessage())
                     .collect(Collectors.joining(", "));
         } else if (ex instanceof BindException) {
-            errorMessage
- += ((BindException) ex).getFieldErrors().stream()
+            errorMessage += ((BindException) ex).getFieldErrors().stream()
                     .map(error -> error.getField() + ": " + error.getDefaultMessage())
                     .collect(Collectors.joining(", "));
         }
