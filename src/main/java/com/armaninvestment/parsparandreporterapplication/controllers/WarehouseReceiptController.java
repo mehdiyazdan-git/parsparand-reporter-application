@@ -18,7 +18,7 @@ import java.util.List;
 
 @CrossOrigin
 @RestController
-@RequestMapping("/api/warehouse-receipts")
+@RequestMapping(path="/api/warehouse-receipts")
 @RequiredArgsConstructor
 public class WarehouseReceiptController {
     private final WarehouseReceiptService warehouseReceiptService;
@@ -85,7 +85,7 @@ public class WarehouseReceiptController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/download-all-warehouse-receipts.xlsx")
+    @GetMapping(path = "/download-all-warehouse-receipts.xlsx")
     public ResponseEntity<byte[]> downloadAllWarehouseReceiptsExcel(
             @RequestParam(defaultValue = "0", required = false) int page,
             @RequestParam(defaultValue = "5", required = false) int size,
@@ -111,7 +111,7 @@ public class WarehouseReceiptController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping(path="/import")
     public ResponseEntity<?> importWarehouseReceiptsFromExcel(@RequestParam("file") MultipartFile file) {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json; charset=UTF-8");
