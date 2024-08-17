@@ -96,4 +96,6 @@ public class GlobalExceptionHandler {
                 "Type mismatch: " + ex.getMessage(),  // More general error message
                 LocalDateTime.now());
     }
+
+    //ClientAbortException
 }

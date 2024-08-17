@@ -49,6 +49,7 @@ public class ContractController {
         return ResponseEntity.ok(contractService.createContract(contractDto));
     }
 
+
     @PutMapping(path = {"/{id}"})
     public ResponseEntity<ContractDto> updateContract(@PathVariable Long id, @RequestBody ContractDto contractDto){
         return ResponseEntity.ok(contractService.updateContract(id, contractDto));
