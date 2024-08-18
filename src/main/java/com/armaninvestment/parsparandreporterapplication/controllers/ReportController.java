@@ -139,6 +139,7 @@ public class ReportController {
             }).toList();
             return ResponseEntity.ok(list);
         } catch (Exception e) {
+            e.printStackTrace();
             logger.error("Error in method getMonthlyReportByProduct: Error generating monthly report by product", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
