@@ -1,5 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.utils;
 
+import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +11,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public class ExcelDataImporter {
+
+    static Logger logger = org.apache.logging.log4j.LogManager.getLogger(ExcelDataImporter.class);
 
     public static <T> List<T> importData(MultipartFile file, Class<T> dtoClass) throws IOException {
         if (file.isEmpty()) {
@@ -35,7 +38,7 @@ public class ExcelDataImporter {
                 } catch (RuntimeException e) {
                     String errorMsg = "خطا در ردیف " + rowNum + ": " + e.getMessage();
                     System.out.println(errorMsg);
-                    e.printStackTrace();
+                    logger.error(errorMsg);
                     throw new RuntimeException(errorMsg, e);
                 }
                 rowNum++;

@@ -7,8 +7,6 @@ import com.github.eloyzone.jalalicalendar.JalaliDate;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.Optional;
 
@@ -20,32 +18,8 @@ public class DateConvertor {
         DateConvertor.yearRepository = yearRepository;
     }
 
-    public static String convertGregorianToJalali(LocalDateTime localDateTime) {
-
-        // Create a DateTimeFormatter for formatting the time part.
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-
-        // Use DateConverter to convert Gregorian date to Jalali.
-        DateConverter dateConverter = new DateConverter();
-        JalaliDate jalaliDate = dateConverter.gregorianToJalali(
-                localDateTime.getYear(),
-                localDateTime.getMonthValue(),
-                localDateTime.getDayOfMonth()
-        );
-
-        // Manually format the Jalali date to ensure two-digit month and day.
-        String formattedJalaliDate = String.format("%d/%02d/%02d",
-                jalaliDate.getYear(), jalaliDate.getMonthPersian().getValue(), jalaliDate.getDay());
-
-        // Format the time part using the created formatter.
-        String formattedTime = localDateTime.format(timeFormatter);
-
-        // Combine formatted Jalali date and formatted time into one string.
-        return formattedJalaliDate + " - " + formattedTime;
-    }
-
     public static LocalDate convertJalaliToGregorian(String jalaliDate) {
-        DateConverter dateConverter = new DateConverter();
+        DateConverter dateConverter = getDateConverter();
 
         String[] parts = jalaliDate.split("/");
         int jalaliYear = Integer.parseInt(parts[0]);
@@ -53,10 +27,11 @@ public class DateConvertor {
         int jalaliDay = Integer.parseInt(parts[2]);
 
         return dateConverter.jalaliToGregorian(jalaliYear, jalaliMonth, jalaliDay);
-    };
+    }
+
     public static String convertGregorianToJalali(LocalDate localDate) {
 
-        DateConverter dateConverter = new DateConverter();
+        DateConverter dateConverter = getDateConverter();
         JalaliDate jalaliDate = dateConverter.gregorianToJalali(
                 localDate.getYear(),
                 localDate.getMonthValue(),
@@ -81,5 +56,8 @@ public class DateConvertor {
                     .orElse(null);
         }
         return null;
+    }
+    private static DateConverter getDateConverter() {
+        return new DateConverter();
     }
 }

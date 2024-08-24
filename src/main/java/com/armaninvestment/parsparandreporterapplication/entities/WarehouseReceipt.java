@@ -48,6 +48,10 @@ public class WarehouseReceipt{
     @Column(name = "month")
     private Integer month;
 
+    @OneToMany(mappedBy = "warehouseReceipt", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
+
     @OneToMany(mappedBy = "warehouseReceipt")
     @ToString.Exclude
     private Set<InvoiceItem> invoiceItems = new LinkedHashSet<>();
@@ -56,9 +60,7 @@ public class WarehouseReceipt{
     @ToString.Exclude
     private Set<ReportItem> reportItems = new LinkedHashSet<>();
 
-    @OneToMany(mappedBy = "warehouseReceipt", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
+
 
     public void addInvoiceItem (InvoiceItem invoiceItem) {
 

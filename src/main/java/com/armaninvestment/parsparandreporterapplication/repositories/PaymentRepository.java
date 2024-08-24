@@ -23,7 +23,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long>, JpaSpec
                     FROM payment
                     GROUP BY payment_subject
                     ORDER BY payment_subject;
-                    
-            """)
+                   \s
+           \s""")
     List<Object[]> getPaymentGroupBySubjectFilterByCustomerId(@Param("customerId") Long customerId);
 }

@@ -1,5 +1,8 @@
 package com.armaninvestment.parsparandreporterapplication.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum ProductType {
     MAIN(2, "اصلی"),
     SCRAPT(6, "ضایعات"),
@@ -11,14 +14,6 @@ public enum ProductType {
     ProductType(int value, String caption) {
         this.value = (value > 0) ? value : 2;
         this.caption =  (caption != null) ? caption : "اصلی";
-    }
-
-    public int getValue() {
-        return value;
-    }
-
-    public String getCaption() {
-        return caption;
     }
 
     public static ProductType fromCaption(String caption) {
