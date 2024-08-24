@@ -112,7 +112,7 @@ public class InvoiceController {
         }
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importInvoicesFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = invoiceService.importInvoicesFromExcel(file);

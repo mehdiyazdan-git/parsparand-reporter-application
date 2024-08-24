@@ -68,7 +68,7 @@ public class InvoiceStatusController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importInvoiceStatusesFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = invoiceStatusService.importInvoiceStatusesFromExcel(file);

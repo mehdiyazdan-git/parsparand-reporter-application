@@ -6,11 +6,13 @@ import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Product;
 import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
 import com.armaninvestment.parsparandreporterapplication.enums.ProductTypeConverter;
+import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.mappers.ProductMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.ProductRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ProductSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.ExcelDataExporter;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.Row;
@@ -55,33 +57,51 @@ public class ProductService {
     }
 
     public ProductDto getProductById(Long id) {
-        var productEntity = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("محصول با این شناسه یافت نشد."));
+        Product productEntity = productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("محصول با شناسه " + id + "یافت نشد" )); // Use a more specific exception
         return productMapper.toDto(productEntity);
     }
 
     public ProductDto createProduct(ProductDto productDto) {
-        validateProductUniqueness(productDto.getProductName(), productDto.getProductCode(), null);
+        validateProductUniqueness(productDto.getProductName(), productDto.getProductCode(),productDto.getId()); // No need to pass null for id in creation
 
-        var productEntity = productMapper.toEntity(productDto);
-        var savedProduct = productRepository.save(productEntity);
+        Product productEntity = productMapper.toEntity(productDto);
+        Product savedProduct = productRepository.save(productEntity);
         return productMapper.toDto(savedProduct);
     }
 
     public ProductDto updateProduct(Long id, ProductDto productDto) {
-        var existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("محصول با این شناسه یافت نشد."));
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("محصول با شناسه " + id + "یافت نشد" )); // Use a more specific exception"));
 
         validateProductUniqueness(productDto.getProductName(), productDto.getProductCode(), id);
 
         productMapper.partialUpdate(productDto, existingProduct);
-        var updatedProduct = productRepository.save(existingProduct);
+        Product updatedProduct = productRepository.save(existingProduct);
         return productMapper.toDto(updatedProduct);
+    }
+
+    private void validateProductUniqueness(String productName, String productCode, Long id) {
+        if (id == null) { // Creation scenario
+            if (productRepository.existsByProductName(productName.trim())) {
+                throw new ConflictException("محصول با این نام وجود دارد.");
+            }
+            if (productRepository.existsByProductCode(productCode)) {
+                throw new ConflictException("محصول با این کد وجود دارد.");
+            }
+        } else { // Update scenario
+            if (productRepository.existsByProductNameAndAndIdNot(productName, id)) {
+                throw new ConflictException("محصول با این نام وجود دارد.");
+            }
+            if (productRepository.existsByProductCodeAndAndIdNot(productCode, id)) {
+                throw new ConflictException("محصول با این کد وجود دارد.");
+            }
+        }
     }
 
     public void deleteProduct(Long id) {
         if (!productRepository.existsById(id)) {
-            throw new IllegalStateException("محصول با این شناسه یافت نشد.");
+            throw new EntityNotFoundException("Product not found with id " + id); // Use a more specific exception
         }
         productRepository.deleteById(id);
     }
@@ -147,25 +167,5 @@ public class ProductService {
         return products.size() + " محصول با موفقیت وارد شدند.";
     }
 
-    private void validateProductUniqueness(String productName, String productCode, Long id) {
-        if (id == null) {
-            if (productRepository.existsByProductName(productName)) {
-                logger.error("محصول با این نام {} وجود دارد.", productName);
-                throw new IllegalStateException("محصول با این نام وجود دارد.");
-            }
-            if (productRepository.existsByProductCode(productCode)) {
-                logger.error("محصول با کد {} وجود دارد.", productCode);
-                throw new IllegalStateException("محصول با این کد وجود دارد.");
-            }
-        } else {
-            if (productRepository.existsByProductNameAndAndIdNot(productName, id)) {
-                logger.error("محصول با نام {} وجود دارد.", productName);
-                throw new IllegalStateException("محصول با این نام وجود دارد.");
-            }
-            if (productRepository.existsByProductCodeAndAndIdNot(productCode, id)) {
-                logger.error("محصول با کد {} وجود دارد.", productCode);
-                throw new IllegalStateException("محصول با این کد وجود دارد.");
-            }
-        }
-    }
+
 }

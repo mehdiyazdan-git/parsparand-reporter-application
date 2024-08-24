@@ -1,9 +1,11 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
+import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportItemDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
+import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.mappers.ReportItemMapper;
 import com.armaninvestment.parsparandreporterapplication.mappers.ReportMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
@@ -12,6 +14,7 @@ import com.armaninvestment.parsparandreporterapplication.specifications.ReportSp
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
@@ -43,9 +46,10 @@ public class ReportService {
     private final YearRepository yearRepository;
     private final WarehouseReceiptRepository warehouseReceiptRepository;
     private final ReportItemRepository reportItemRepository;
+    private final WarehouseReceiptItemRepository warehouseReceiptItemRepository;
 
 
-        @PersistenceContext
+    @PersistenceContext
         private EntityManager entityManager;
     private final ReportItemMapper reportItemMapper;
 
@@ -132,15 +136,29 @@ public class ReportService {
         return entityManager.createQuery(cq).getSingleResult();
     }
 
-
     public ReportDto createReport(ReportDto reportDto) {
         LocalDate reportDate = reportDto.getReportDate();
         if (reportRepository.existsByReportDate(reportDate)) {
-            throw new IllegalStateException("یک گزارش با همین تاریخ قبلاً ثبت شده است.");
+            throw new ConflictException("یک گزارش با همین تاریخ قبلاً ثبت شده است.");
         }
-        var reportEntity = reportMapper.toEntity(reportDto);
-        var savedReport = reportRepository.save(reportEntity);
+
+        if (reportDto.getReportItems() != null) {
+            validateReportItemsForCreation(reportDto.getReportItems());
+        }
+
+        Report reportEntity = reportMapper.toEntity(reportDto);
+        Report savedReport = reportRepository.save(reportEntity);
         return reportMapper.toDto(savedReport);
+    }
+
+    private void validateReportItemsForCreation(Set<ReportItemDto> reportItemDtos) {
+        for (ReportItemDto reportItemDto : reportItemDtos) {
+            if (reportItemRepository.existsByWarehouseReceiptId(reportItemDto.getWarehouseReceiptId())) {
+                WarehouseReceipt warehouseReceipt = warehouseReceiptRepository.findById(reportItemDto.getWarehouseReceiptId())
+                        .orElseThrow(() -> new EntityNotFoundException("رسید انبار با شناسه " + reportItemDto.getWarehouseReceiptId() + " یافت نشد."));
+                throw new ConflictException("برای شماره حواله " + warehouseReceipt.getWarehouseReceiptNumber() + " قبلا گزارش ایجاد شده است.");
+            }
+        }
     }
 
     public ReportDto getReportById(Long id) {
@@ -150,17 +168,31 @@ public class ReportService {
     }
 
     public ReportDto updateReport(Long id, ReportDto reportDto) {
-        var existingReport = reportRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("گزارش با شناسه " + id + " پیدا نشد."));
+        Report existingReport = reportRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("گزارش با شناسه " + id + " یافت نشد.")); // Translated
 
         LocalDate reportDate = reportDto.getReportDate();
         if (reportRepository.existsByReportDateAndIdNot(reportDate, id)) {
-            throw new IllegalStateException("یک گزارش دیگر با همین تاریخ وجود دارد.");
+            throw new ConflictException("گزارش دیگری با همین تاریخ وجود دارد."); // Translated
+        }
+
+        if (reportDto.getReportItems() != null) {
+            validateReportItems(reportDto.getReportItems());
         }
 
         reportMapper.partialUpdate(reportDto, existingReport);
-        var updatedReport = reportRepository.save(existingReport);
+        Report updatedReport = reportRepository.save(existingReport);
         return reportMapper.toDto(updatedReport);
+    }
+
+    private void validateReportItems(Set<ReportItemDto> reportItemDtos) throws ConflictException {
+        for (ReportItemDto reportItemDto : reportItemDtos) {
+            if (reportItemRepository.existsByWarehouseReceiptIdAndIdNot(reportItemDto.getWarehouseReceiptId(), reportItemDto.getId())) {
+                WarehouseReceipt warehouseReceipt = warehouseReceiptRepository.findById(reportItemDto.getWarehouseReceiptId())
+                        .orElseThrow(() -> new EntityNotFoundException("رسید انبار با شناسه " + reportItemDto.getWarehouseReceiptId() + " یافت نشد.")); // Translated
+                throw new ConflictException("برای شماره حواله " + warehouseReceipt.getWarehouseReceiptNumber() + " قبلا گزارش ایجاد شده است."); // Translated
+            }
+        }
     }
 
 

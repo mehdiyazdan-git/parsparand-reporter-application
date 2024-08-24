@@ -14,6 +14,9 @@ import java.util.Optional;
 @Repository
 public interface WarehouseReceiptRepository extends JpaRepository<WarehouseReceipt, Long>, JpaSpecificationExecutor<WarehouseReceipt> {
 
+    @Query("select w from WarehouseReceipt w where w.warehouseReceiptNumber = :warehouseReceiptNumber")
+    Optional<WarehouseReceipt> findByWarehouseReceiptNumber(@Param("warehouseReceiptNumber") Long warehouseReceiptNumber);
+
     @Query("""
             select w from WarehouseReceipt w
             where w.warehouseReceiptNumber = :warehouseReceiptNumber and w.warehouseReceiptDate = :warehouseReceiptDate""")

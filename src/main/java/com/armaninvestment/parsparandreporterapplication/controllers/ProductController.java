@@ -3,6 +3,7 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ProductSelectDto;
 import com.armaninvestment.parsparandreporterapplication.enums.ProductType;
+import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ProductSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +58,7 @@ public class ProductController {
     public ResponseEntity<?> createProduct(@RequestBody ProductDto productDto){
        try {
            return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(productDto));
-       }catch (IllegalStateException e){
+       }catch (IllegalStateException | ConflictException e){
            logger.error(e.getMessage());
            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
        }catch (Exception e){
@@ -70,7 +71,7 @@ public class ProductController {
     public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody ProductDto productDto){
         try {
             return ResponseEntity.ok(productService.updateProduct(id, productDto));
-        }catch (IllegalStateException e){
+        }catch (IllegalStateException | ConflictException  e){
             logger.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }catch (Exception e){
@@ -104,7 +105,7 @@ public class ProductController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importProductsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = productService.importProductsFromExcel(file);

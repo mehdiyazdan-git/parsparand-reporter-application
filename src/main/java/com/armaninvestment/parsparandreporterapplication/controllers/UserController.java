@@ -71,7 +71,7 @@ public class UserController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importUsersFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = userService.importUsersFromExcel(file);

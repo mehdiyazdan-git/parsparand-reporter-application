@@ -22,7 +22,7 @@ public class YearController {
     private final YearService yearService;
     Logger logger = org.apache.logging.log4j.LogManager.getLogger(YearController.class);
 
-    @GetMapping(path = {"page/", "page"})
+    @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<YearDto>> getAllYearsByCriteria(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -36,10 +36,7 @@ public class YearController {
     public ResponseEntity<?> yearSelect() {
         return ResponseEntity.ok(yearService.yearSelect());
     }
-    @GetMapping(path = {"/",""})
-    public List<Year> getAllYears() {
-        return yearService.getAllYears();
-    }
+
 
     @GetMapping(path = {"/{id}"})
     public ResponseEntity<YearDto> getYearById(@PathVariable Long id){
@@ -73,7 +70,7 @@ public class YearController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importYearsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = yearService.importYearsFromExcel(file);

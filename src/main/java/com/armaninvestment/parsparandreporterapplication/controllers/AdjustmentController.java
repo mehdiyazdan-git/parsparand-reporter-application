@@ -82,7 +82,7 @@ public class AdjustmentController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<String> importAdjustmentsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String result = adjustmentService.importAdjustmentsFromExcel(file);

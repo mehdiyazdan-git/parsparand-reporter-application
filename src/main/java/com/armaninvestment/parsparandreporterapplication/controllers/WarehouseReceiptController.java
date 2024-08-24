@@ -111,7 +111,7 @@ public class WarehouseReceiptController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping(path="/import")
+    @PostMapping(path="/upload")
     public ResponseEntity<?> importWarehouseReceiptsFromExcel(@RequestParam("file") MultipartFile file) {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json; charset=UTF-8");

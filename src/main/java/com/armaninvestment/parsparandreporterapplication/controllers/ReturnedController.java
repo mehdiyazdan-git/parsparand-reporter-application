@@ -95,7 +95,7 @@ public class ReturnedController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importReturnedsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = returnedService.importReturnedsFromExcel(file);

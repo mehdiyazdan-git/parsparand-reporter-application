@@ -3,6 +3,7 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 import com.armaninvestment.parsparandreporterapplication.dtos.CompanyReportDTO;
 import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
+import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.repositories.ReportRepository;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ReportService;
@@ -45,34 +46,50 @@ public class ReportController {
     }
 
     @GetMapping(path = {"/{id}"})
-    public ResponseEntity<ReportDto> getReportById(@PathVariable Long id){
+    public ResponseEntity<ReportDto> getReportById(@PathVariable Long id) {
         return ResponseEntity.ok(reportService.getReportById(id));
     }
 
     @PostMapping(path = {"/", ""})
-    public ResponseEntity<ReportDto> createReport(@RequestBody ReportDto reportDto){
+    public ResponseEntity<?> createReport(@RequestBody ReportDto reportDto) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(reportService.createReport(reportDto));
-        }catch (IllegalArgumentException | EntityNotFoundException ex){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-            }catch (Exception ex){
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        } catch (IllegalArgumentException | EntityNotFoundException ex) {
+            logErrorMessage(ex);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        } catch (Exception ex) {
+            logErrorMessage(ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
         }
     }
 
+    void logErrorMessage(Exception ex) {
+        logger.error("خطا در بروز رسانی: {}", ex.getMessage());
+        ex.printStackTrace();
+    }
+
     @PutMapping(path = {"/{id}"})
-    public ResponseEntity<ReportDto> updateReport(@PathVariable Long id, @RequestBody ReportDto reportDto){
-        return ResponseEntity.ok(reportService.updateReport(id, reportDto));
+    public ResponseEntity<?> updateReport(@PathVariable Long id, @RequestBody ReportDto reportDto) {
+        try {
+            return ResponseEntity.ok(reportService.updateReport(id, reportDto));
+        } catch (ConflictException | EntityNotFoundException ex) {
+            logErrorMessage(ex);
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        } catch (Exception ex) {
+            logErrorMessage(ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     @DeleteMapping(path = {"/{id}"})
-    public ResponseEntity<Void> deleteReport(@PathVariable Long id){
+    public ResponseEntity<Void> deleteReport(@PathVariable Long id) {
         try {
             reportService.deleteReport(id);
             return ResponseEntity.noContent().build();
-        }catch (IllegalArgumentException | IllegalStateException | EntityNotFoundException ex){
+        } catch (IllegalArgumentException | IllegalStateException | EntityNotFoundException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } catch (Exception ex){
+        } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -147,8 +164,8 @@ public class ReportController {
 
     @GetMapping(path = "/sales-by-year")
     public ResponseEntity<List<SalesByYearGroupByMonth>> getSalesByYearGroupByMonth(
-            @RequestParam(name= "yearName",required = false) String yearName,
-            @RequestParam(name = "productType",required = false) Integer productType) {
+            @RequestParam(name = "yearName", required = false) String yearName,
+            @RequestParam(name = "productType", required = false) Integer productType) {
         return ResponseEntity.ok(reportService.findSalesByYearGroupByMonth(Integer.valueOf(yearName), productType));
     }
 

@@ -86,7 +86,7 @@ public class CustomerController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importCustomersFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = customerService.importCustomersFromExcel(file);

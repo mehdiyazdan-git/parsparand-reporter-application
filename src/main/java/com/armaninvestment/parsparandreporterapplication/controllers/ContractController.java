@@ -4,6 +4,7 @@ import com.armaninvestment.parsparandreporterapplication.dtos.ContractDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractSelectDto;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ContractService;
+import com.armaninvestment.parsparandreporterapplication.utils.FileMediaType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
@@ -77,17 +78,14 @@ public class ContractController {
         search.setSize(_size);
         search.setSortBy(sortBy);
         search.setOrder(order);
-
-        byte[] excelData = contractService.exportContractsToExcel(search, _exportAll);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("all_contracts.xlsx")
-                .build());
-        return ResponseEntity.ok().headers(headers).body(excelData);
+        byte[] excelBytes = contractService.exportContractsToExcel(search,_exportAll);
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=contracts.xlsx");
+        return ResponseEntity.ok().headers(headers).body(excelBytes);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importContractsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = contractService.importContractsFromExcel(file);

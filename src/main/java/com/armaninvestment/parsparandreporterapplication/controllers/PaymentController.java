@@ -89,7 +89,7 @@ public class PaymentController {
         return ResponseEntity.ok().headers(headers).body(excelData);
     }
 
-    @PostMapping("/import")
+    @PostMapping("/upload")
     public ResponseEntity<?> importPaymentsFromExcel(@RequestParam("file") MultipartFile file) {
         try {
             String list = paymentService.importPaymentsFromExcel(file);
