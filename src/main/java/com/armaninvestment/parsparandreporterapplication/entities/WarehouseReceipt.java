@@ -16,6 +16,10 @@ import java.util.Set;
 @ToString
 @RequiredArgsConstructor
 @Table(name = "warehouse_receipt")
+@NamedEntityGraph(
+        name = "WarehouseReceipt.withItems",
+        attributeNodes = @NamedAttributeNode("warehouseReceiptItems")
+)
 public class WarehouseReceipt{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -67,6 +71,23 @@ public class WarehouseReceipt{
         invoiceItems.add(invoiceItem);
         invoiceItem.setWarehouseReceipt(this);
     }
+
+    public void removeInvoiceItem (InvoiceItem invoiceItem) {
+        invoiceItems.remove(invoiceItem);
+        invoiceItem.setWarehouseReceipt(null);
+    }
+
+    public Double getTotalPrice() {
+        return warehouseReceiptItems.stream()
+                .mapToDouble(item -> item.getUnitPrice() * item.getQuantity())
+                .sum();
+    }
+    public Long getTotalQuantity() {
+        return warehouseReceiptItems.stream()
+                .mapToLong(WarehouseReceiptItem::getQuantity)
+                .sum();
+    }
+
 
     @Override
     public final boolean equals(Object o) {

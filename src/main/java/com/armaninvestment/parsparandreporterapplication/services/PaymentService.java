@@ -12,6 +12,7 @@ import com.armaninvestment.parsparandreporterapplication.repositories.YearReposi
 import com.armaninvestment.parsparandreporterapplication.searchForms.PaymentSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.PaymentSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
+import com.armaninvestment.parsparandreporterapplication.utils.CustomPageImpl;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
@@ -34,6 +35,18 @@ import java.util.stream.Collectors;
 import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.convertToDate;
 import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.getCellStringValue;
 
+//public class PaymentDto implements Serializable {
+//    private Long id;
+//    private LocalDate paymentDate;
+//    private String paymentDescription;
+//    private Long customerId;
+//    private String customerName;
+//    private Long yearId;
+//    private Long yearName;
+//    private Double paymentAmount;
+//    private PaymentSubject paymentSubject;
+//}
+
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -46,9 +59,14 @@ public class PaymentService {
         Sort sort = Sort.by(Sort.Direction.fromString(order), sortBy);
         PageRequest pageRequest = PageRequest.of(page, size, sort);
         Specification<Payment> specification = PaymentSpecification.bySearchCriteria(search);
-        return paymentRepository.findAll(specification, pageRequest)
-                .map(paymentMapper::toDto);
+        Page<PaymentDto> dtoPage = paymentRepository.findAll(specification, pageRequest).map(paymentMapper::toDto);
+        double overallTotalAmount = paymentRepository.findAll(specification, PageRequest.of(0, Integer.MAX_VALUE, sort)).getContent()
+                .stream().mapToDouble(Payment::getPaymentAmount).sum();
+        CustomPageImpl<PaymentDto> pageImpel = new CustomPageImpl<>(dtoPage.getContent(), pageRequest, dtoPage.getTotalElements());
+        pageImpel.setOverallTotalAmount(overallTotalAmount);
+        return pageImpel;
     }
+
     @Transactional
     public PaymentDto createPayment(PaymentDto paymentDto) {
         var paymentEntity = paymentMapper.toEntity(paymentDto);

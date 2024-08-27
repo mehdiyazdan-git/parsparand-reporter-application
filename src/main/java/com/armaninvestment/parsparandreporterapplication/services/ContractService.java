@@ -1,9 +1,7 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
 
-import com.armaninvestment.parsparandreporterapplication.dtos.ContractDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.ContractItemDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.ContractSelectDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.*;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.exceptions.DatabaseIntegrityViolationException;
 import com.armaninvestment.parsparandreporterapplication.mappers.ContractItemMapper;
@@ -12,7 +10,9 @@ import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ContractSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
+import com.armaninvestment.parsparandreporterapplication.utils.CustomPageImpl;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
+import com.armaninvestment.parsparandreporterapplication.utils.TupleQueryHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
@@ -104,30 +104,20 @@ public class ContractService {
                 .getResultList().stream().toList();
 
         // Convert to DTO
-        List<ContractDto> contractDtoList = tuples.stream().map(tuple -> new ContractDto(
-                tuple.get("id", Long.class),
-                tuple.get("contractDescription", String.class),
-                tuple.get("contractNumber", String.class),
-                tuple.get("endDate", LocalDate.class),
-                tuple.get("startDate", LocalDate.class),
-                tuple.get("customerId", Long.class),
-                tuple.get("customerName", String.class),
-                tuple.get("yearId", Long.class),
-                tuple.get("advancePayment", Double.class),
-                tuple.get("insuranceDeposit", Double.class),
-                tuple.get("performanceBond", Double.class),
-                tuple.get("totalQuantity", Long.class),
-                tuple.get("totalPrice", Double.class),
-                new LinkedHashSet<>() // Assuming you will fill this set later
-        )).collect(Collectors.toList());
+        List<ContractDto> contractDtoList = convertToDtoList(tuples);
 
-        // Fetch and set Contract Items
-        contractDtoList.forEach(contractDto -> {
-            Optional<Contract> optionalContract = contractRepository.findById(contractDto.getId());
-            optionalContract.ifPresent(contract -> contractDto
-                    .setContractItems(contract.getContractItems().stream().map(contractItemMapper::toDto).collect(Collectors.toSet()))
-            );
-        });
+
+        // Pagination
+        List<Tuple> overall = entityManager.createQuery(cq)
+                .setFirstResult(0)
+                .setMaxResults(Integer.MAX_VALUE)
+                .getResultList().stream().toList();
+
+        List<ContractDto> overallDtoList = convertToDtoList(overall);
+
+        Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
+        Double overallTotalPrice = calculateTotalPrice(overallDtoList);
+
 
         // Calculate total pages
         PageRequest pageRequest = PageRequest.of(
@@ -136,7 +126,35 @@ public class ContractService {
                 Sort.by(sortDir.equalsIgnoreCase("asc") ? Sort.Order.asc(Objects.requireNonNull(sortBy)) : Sort.Order.desc(Objects.requireNonNull(sortBy)))
         );
 
-        return new PageImpl<>(contractDtoList, pageRequest, getCount(contractSearch));
+        CustomPageImpl<ContractDto> pageImpel = new CustomPageImpl<>(contractDtoList, pageRequest, getCount(contractSearch));
+        pageImpel.setOverallTotalPrice(overallTotalPrice);
+        pageImpel.setOverallTotalQuantity(overallTotalQuantity);
+        return pageImpel;
+    }
+    private List<ContractDto> convertToDtoList(List<Tuple> tuples) {
+        TupleQueryHelper<ContractDto, Tuple> helper = new TupleQueryHelper<>(ContractDto.class);
+        List<ContractDto> contractDtoList = helper.convertToDtoList(tuples);
+
+        contractDtoList.forEach(contractDto -> {
+            Optional<Contract> optionalContract = contractRepository.findById(contractDto.getId());
+            optionalContract.ifPresent(contract -> contractDto
+                    .setContractItems(contract.getContractItems().stream().map(contractItemMapper::toDto).collect(Collectors.toSet()))
+            );
+        });
+        return contractDtoList;
+    }
+
+    private Double calculateTotalQuantity(List<ContractDto> list) {
+        return list.stream()
+                .map(dto -> dto.getContractItems().stream().mapToDouble(ContractItemDto::getQuantity).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
+    }
+    private Double calculateTotalPrice(List<ContractDto> list) {
+        return list.stream()
+                .map(dto -> dto.getContractItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
     }
 
     private Long getCount(ContractSearch contractSearch){

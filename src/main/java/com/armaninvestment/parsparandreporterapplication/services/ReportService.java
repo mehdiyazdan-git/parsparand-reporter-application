@@ -1,9 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.ReportDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.ReportItemDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.SalesByYearGroupByMonth;
+import com.armaninvestment.parsparandreporterapplication.dtos.*;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.mappers.ReportItemMapper;
@@ -12,17 +9,15 @@ import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ReportSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.ReportSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
+import com.armaninvestment.parsparandreporterapplication.utils.CustomPageImpl;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Tuple;
+import com.armaninvestment.parsparandreporterapplication.utils.TupleQueryHelper;
+import jakarta.persistence.*;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -46,7 +41,6 @@ public class ReportService {
     private final YearRepository yearRepository;
     private final WarehouseReceiptRepository warehouseReceiptRepository;
     private final ReportItemRepository reportItemRepository;
-    private final WarehouseReceiptItemRepository warehouseReceiptItemRepository;
 
 
     @PersistenceContext
@@ -76,6 +70,7 @@ public class ReportService {
                 totalQuantity.alias("totalQuantity")
         );
 
+
         // Specification
         Specification<Report> specification = new ReportSpecification(reportSearch);
         cq.groupBy(root.get("id"), root.get("reportDate"), root.get("reportExplanation"), root.get("year").get("id"));
@@ -87,23 +82,44 @@ public class ReportService {
             case "totalQuantity" ->   cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalQuantity) : cb.desc(totalQuantity));
             default -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get(sortBy)) : cb.desc(root.get(sortBy)));
         }
-
-        // Pagination
+        // Pagination [ PAGE]
         List<Tuple> tuples = entityManager.createQuery(cq)
                 .setFirstResult(page * size)
                 .setMaxResults(size)
                 .getResultList().stream().toList();
 
+        List<ReportDto> reportDtoList = convertToDtoList(tuples);
 
-        // Convert to DTO
-        List<ReportDto> reportDtoList = tuples.stream().map(tuple -> new ReportDto(
-                tuple.get("id", Long.class),
-                tuple.get("reportDate", LocalDate.class),
-                tuple.get("reportExplanation", String.class),
-                tuple.get("yearId", Long.class),
-                tuple.get("totalPrice", Double.class),
-                tuple.get("totalQuantity", Long.class)
-        )).collect(Collectors.toList());
+        // Calculate total pages
+        PageRequest pageRequest = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDir.equalsIgnoreCase("asc")
+                        ? Sort.Order.asc(Objects.requireNonNull(sortBy))
+                        : Sort.Order.desc(Objects.requireNonNull(sortBy)))
+        );
+
+        // Pagination [OVERALL]
+        List<Tuple> overall = entityManager.createQuery(cq)
+                .setFirstResult(0)
+                .setMaxResults(Integer.MAX_VALUE)
+                .getResultList().stream().toList();
+
+        List<ReportDto> overallDtoList = convertToDtoList(overall);
+
+
+        Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
+        Double overallTotalPrice = calculateTotalPrice(overallDtoList);
+
+        // Create a new CustomPageImpl
+        CustomPageImpl<ReportDto> pageImpel = new CustomPageImpl<>(reportDtoList, pageRequest, getCount(reportSearch));
+        pageImpel.setOverallTotalPrice(overallTotalPrice);
+        pageImpel.setOverallTotalQuantity(overallTotalQuantity);
+        return pageImpel;
+    }
+    private List<ReportDto> convertToDtoList(List<Tuple> tuples) {
+        TupleQueryHelper<ReportDto, Tuple> helper = new TupleQueryHelper<>(ReportDto.class);
+        List<ReportDto> reportDtoList = helper.convertToDtoList(tuples);
 
         reportDtoList.forEach(reportDto -> {
             Optional<Report> optionalReport = reportRepository.findById(reportDto.getId());
@@ -111,17 +127,23 @@ public class ReportService {
                     .setReportItems(report.getReportItems().stream().map(reportItemMapper::toDto).collect(Collectors.toSet()))
             );
         });
-
-
-        // Calculate total pages
-        PageRequest pageRequest = PageRequest.of(
-                page,
-                size,
-                Sort.by(sortDir.equalsIgnoreCase("asc") ? Sort.Order.asc(Objects.requireNonNull(sortBy)) : Sort.Order.desc(Objects.requireNonNull(sortBy)))
-        );
-
-        return new PageImpl<>(reportDtoList, pageRequest, getCount(reportSearch));
+        return reportDtoList;
     }
+
+    private Double calculateTotalQuantity(List<ReportDto> list) {
+    return list.stream()
+                .map(dto -> dto.getReportItems().stream().mapToDouble(ReportItemDto::getQuantity).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
+    }
+    private Double calculateTotalPrice(List<ReportDto> list) {
+        return list.stream()
+                .map(dto -> dto.getReportItems()
+                        .stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
+    }
+
     private Long getCount(ReportSearch reportSearch){
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();

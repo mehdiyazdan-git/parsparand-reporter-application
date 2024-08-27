@@ -1,7 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceItemDto;
+import com.armaninvestment.parsparandreporterapplication.dtos.*;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import com.armaninvestment.parsparandreporterapplication.exceptions.RowColumnException;
@@ -10,9 +9,7 @@ import com.armaninvestment.parsparandreporterapplication.mappers.InvoiceMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.InvoiceSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.InvoiceSpecification;
-import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
-import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
-import com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils;
+import com.armaninvestment.parsparandreporterapplication.utils.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
@@ -113,14 +110,6 @@ public class InvoiceService {
                 root.get("jalaliYear")
         );
 
-        /*  Sorting
-            This block is responsible for sorting the results of the query based on the provided sortBy and sortDir parameters.
-            It uses a switch statement to determine the appropriate sorting expression based on the sortBy parameter.
-            The sorting direction is determined by the sortDir parameter, which is checked using the equalsIgnoreCase method.
-            If the sortDir is "asc", the ascending order is used, otherwise, the descending order is used. The sorting
-            e expression is then added to the query using the orderBy method of the CriteriaBuilder object.
-            If the sortBy parameter is not provided or is null, the default sorting expression is used, which sorts the results by the id field in ascending order.
-         */
         switch (Objects.requireNonNull(sortBy)) {
             case "totalPrice" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalPrice) : cb.desc(totalPrice));
             case "totalQuantity" ->
@@ -143,43 +132,63 @@ public class InvoiceService {
         }
 
         // Convert to DTO
-        List<InvoiceDto> invoiceDtoList = tuples.stream().map(tuple -> new InvoiceDto(
-                tuple.get("id", Long.class),
-                tuple.get("dueDate", LocalDate.class),
-                tuple.get("invoiceNumber", Long.class),
-                tuple.get("issuedDate", LocalDate.class),
-                tuple.get("salesType", SalesType.class),
-                tuple.get("contractId", Long.class),
-                tuple.get("contractNumber", String.class),
-                tuple.get("customerId", Long.class),
-                tuple.get("customerName", String.class),
-                tuple.get("invoiceStatusId", Integer.class),
-                tuple.get("advancedPayment", Long.class),
-                tuple.get("insuranceDeposit", Long.class),
-                tuple.get("performanceBound", Long.class),
-                tuple.get("yearId", Long.class),
-                tuple.get("totalQuantity", Long.class),
-                tuple.get("totalPrice", Double.class),
-                new LinkedHashSet<>() // Assuming you will fill this set later
-        )).collect(Collectors.toList());
+        List<InvoiceDto> invoiceDtoList = convertToDtoList(tuples);
 
-        // Fetch and set Invoice Items
+
+
+        // Calculate total pages
+        PageRequest pageRequest = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDir.equalsIgnoreCase("asc")
+                        ? Sort.Order.asc(Objects.requireNonNull(sortBy))
+                        : Sort.Order.desc(Objects.requireNonNull(sortBy)))
+        );
+
+        // entire result set query:
+        List<Tuple> overall  = entityManager.createQuery(cq)
+                .setFirstResult(0)
+                .setMaxResults(Integer.MAX_VALUE)
+                .getResultList();
+
+        List<InvoiceDto> overallDtoList = convertToDtoList(overall);
+
+        Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
+        Double overallTotalPrice = calculateTotalPrice(overallDtoList);
+        // Create a new CustomPageImpl with the overall totals
+        CustomPageImpl<InvoiceDto> pageImpel = new CustomPageImpl<>(invoiceDtoList, pageRequest, getCount(invoiceSearch));
+        pageImpel.setOverallTotalPrice(overallTotalPrice);
+        pageImpel.setOverallTotalQuantity(overallTotalQuantity);
+        return pageImpel;
+    }
+
+    private Double calculateTotalPrice(List<InvoiceDto> list) {
+        return list.stream()
+                .map(dto -> dto.getInvoiceItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
+    }
+
+    private Double calculateTotalQuantity(List<InvoiceDto> list) {
+        return list.stream()
+                .map(dto -> dto.getInvoiceItems().stream().mapToDouble(InvoiceItemDto::getQuantity).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
+    }
+
+    private List<InvoiceDto> convertToDtoList(List<Tuple> tuples) {
+        TupleQueryHelper<InvoiceDto, Tuple> helper = new TupleQueryHelper<>(InvoiceDto.class);
+        List<InvoiceDto> invoiceDtoList = helper.convertToDtoList(tuples);
+
         invoiceDtoList.forEach(invoiceDto -> {
             Optional<Invoice> optionalInvoice = invoiceRepository.findById(invoiceDto.getId());
             optionalInvoice.ifPresent(invoice -> invoiceDto
                     .setInvoiceItems(invoice.getInvoiceItems().stream().map(invoiceItemMapper::toDto).collect(Collectors.toSet()))
             );
         });
-
-        // Calculate total pages
-        PageRequest pageRequest = PageRequest.of(
-                page,
-                size,
-                Sort.by(sortDir.equalsIgnoreCase("asc") ? Sort.Order.asc(Objects.requireNonNull(sortBy)) : Sort.Order.desc(Objects.requireNonNull(sortBy)))
-        );
-
-        return new PageImpl<>(invoiceDtoList, pageRequest, getCount(invoiceSearch));
+        return invoiceDtoList;
     }
+
 
 
     private Long getCount(InvoiceSearch invoiceSearch) {

@@ -52,7 +52,7 @@ public class InvoiceController {
         return ResponseEntity.ok("All invoices deleted successfully");
     }
 
-    @GetMapping("/download.xlsx")
+    @GetMapping("/download-all-invoices.xlsx")
     public ResponseEntity<byte[]> downloadAllInvoicesExcel(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,

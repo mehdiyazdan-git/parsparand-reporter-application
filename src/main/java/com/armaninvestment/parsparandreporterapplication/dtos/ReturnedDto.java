@@ -1,7 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.dtos;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,6 +26,4 @@ public class ReturnedDto implements Serializable {
     private String customerName;
     private Integer jalaliYear;
     private Long yearId;
-
-
 }

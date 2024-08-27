@@ -7,13 +7,16 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "report")
+@NamedEntityGraph(name = "Report.withReportItems", attributeNodes = @NamedAttributeNode("reportItems"))
 public class Report{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,7 +41,7 @@ public class Report{
     private Year year;
 
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ReportItem> reportItems = new LinkedHashSet<>();
+    private List<ReportItem> reportItems = new ArrayList<>();
 
     public Double getTotalPrice(){
         return (reportItems.stream()

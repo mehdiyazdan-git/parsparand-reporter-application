@@ -1,8 +1,6 @@
 package com.armaninvestment.parsparandreporterapplication.services;
 
-import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptItemDto;
-import com.armaninvestment.parsparandreporterapplication.dtos.WarehouseReceiptSelect;
+import com.armaninvestment.parsparandreporterapplication.dtos.*;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
 import com.armaninvestment.parsparandreporterapplication.mappers.WarehouseReceiptItemMapper;
 import com.armaninvestment.parsparandreporterapplication.mappers.WarehouseReceiptMapper;
@@ -10,7 +8,9 @@ import com.armaninvestment.parsparandreporterapplication.repositories.*;
 import com.armaninvestment.parsparandreporterapplication.searchForms.WarehouseReceiptSearch;
 import com.armaninvestment.parsparandreporterapplication.specifications.WarehouseReceiptSpecification;
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
+import com.armaninvestment.parsparandreporterapplication.utils.CustomPageImpl;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
+import com.armaninvestment.parsparandreporterapplication.utils.TupleQueryHelper;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
 import jakarta.persistence.EntityManager;
@@ -22,7 +22,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -100,19 +99,35 @@ public class WarehouseReceiptService {
                 .getResultList().stream().toList();
 
         // Convert to DTO
-        List<WarehouseReceiptDto> warehouseReceiptDtoList = tuples.stream().map(tuple -> new WarehouseReceiptDto(
-                tuple.get("id", Long.class),
-                tuple.get("warehouseReceiptDate", LocalDate.class),
-                tuple.get("warehouseReceiptDescription", String.class),
-                tuple.get("warehouseReceiptNumber", Long.class),
-                tuple.get("customerId", Long.class),
-                tuple.get("customerName", String.class),
-                tuple.get("yearId", Long.class),
-                tuple.get("yearName", Long.class),
-                tuple.get("totalQuantity", Long.class),
-                tuple.get("totalPrice", Double.class),
-                new LinkedHashSet<>() // Assuming you will fill this set later
-        )).collect(Collectors.toList());
+        List<WarehouseReceiptDto> warehouseReceiptDtoList = convertToDtoList(tuples);
+
+        // Calculate total pages
+        PageRequest pageRequest = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDir.equalsIgnoreCase("asc")
+                        ? Sort.Order.asc(Objects.requireNonNull(sortBy))
+                        : Sort.Order.desc(Objects.requireNonNull(sortBy)))
+        );
+        // entire result set query:
+        List<Tuple> overall  = entityManager.createQuery(cq)
+                .setFirstResult(0)
+                .setMaxResults(Integer.MAX_VALUE)
+                .getResultList();
+
+        List<WarehouseReceiptDto> overallDtoList = convertToDtoList(overall);
+
+        Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
+        Double overallTotalPrice = calculateTotalPrice(overallDtoList);
+        // Create a new CustomPageImpl with the overall totals
+        CustomPageImpl<WarehouseReceiptDto> pageImpel = new CustomPageImpl<>(warehouseReceiptDtoList, pageRequest, getCount(warehouseReceiptSearch));
+        pageImpel.setOverallTotalPrice(overallTotalPrice);
+        pageImpel.setOverallTotalQuantity(overallTotalQuantity);
+        return pageImpel;
+    }
+    private List<WarehouseReceiptDto> convertToDtoList(List<Tuple> tuples) {
+        TupleQueryHelper<WarehouseReceiptDto, Tuple> helper = new TupleQueryHelper<>(WarehouseReceiptDto.class);
+        List<WarehouseReceiptDto> warehouseReceiptDtoList = helper.convertToDtoList(tuples);
 
         warehouseReceiptDtoList.forEach(warehouseReceiptDto -> {
             Optional<WarehouseReceipt> optionalWarehouseReceipt = warehouseReceiptRepository.findById(warehouseReceiptDto.getId());
@@ -120,16 +135,20 @@ public class WarehouseReceiptService {
                     .setWarehouseReceiptItems(warehouseReceipt.getWarehouseReceiptItems().stream().map(warehouseReceiptItemMapper::toDto).collect(Collectors.toSet()))
             );
         });
+        return warehouseReceiptDtoList;
+    }
 
-
-        // Calculate total pages
-        PageRequest pageRequest = PageRequest.of(
-                page,
-                size,
-                Sort.by(sortDir.equalsIgnoreCase("asc") ? Sort.Order.asc(Objects.requireNonNull(sortBy)) : Sort.Order.desc(Objects.requireNonNull(sortBy)))
-        );
-
-        return new PageImpl<>(warehouseReceiptDtoList, pageRequest, getCount(warehouseReceiptSearch));
+    private Double calculateTotalQuantity(List<WarehouseReceiptDto> list) {
+        return list.stream()
+                .map(dto -> dto.getWarehouseReceiptItems().stream().mapToDouble(WarehouseReceiptItemDto::getQuantity).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
+    }
+    private Double calculateTotalPrice(List<WarehouseReceiptDto> list) {
+        return list.stream()
+                .map(dto -> dto.getWarehouseReceiptItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
     }
 
     private Long getCount(WarehouseReceiptSearch warehouseReceiptSearch){
