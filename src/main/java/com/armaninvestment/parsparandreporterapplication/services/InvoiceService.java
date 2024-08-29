@@ -183,7 +183,7 @@ public class InvoiceService {
         invoiceDtoList.forEach(invoiceDto -> {
             Optional<Invoice> optionalInvoice = invoiceRepository.findById(invoiceDto.getId());
             optionalInvoice.ifPresent(invoice -> invoiceDto
-                    .setInvoiceItems(invoice.getInvoiceItems().stream().map(invoiceItemMapper::toDto).collect(Collectors.toSet()))
+                    .setInvoiceItems(invoice.getInvoiceItems().stream().map(invoiceItemMapper::toDto).collect(Collectors.toList()))
             );
         });
         return invoiceDtoList;
@@ -401,7 +401,7 @@ public class InvoiceService {
                         }
                         dto.setYearId(year.getId());
                         dto.setInvoiceStatusId(invoiceStatus.getId());
-                        dto.setInvoiceItems(new LinkedHashSet<>());
+                        dto.setInvoiceItems(new ArrayList<>());
                         return dto;
                     });
 

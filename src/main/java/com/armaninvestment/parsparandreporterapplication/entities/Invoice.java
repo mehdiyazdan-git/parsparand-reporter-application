@@ -6,9 +6,7 @@ import lombok.*;
 import org.hibernate.proxy.HibernateProxy;
 
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Getter
 @Setter
@@ -73,7 +71,7 @@ public class Invoice{
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
-    private Set<InvoiceItem> invoiceItems = new LinkedHashSet<>();
+    private List<InvoiceItem> invoiceItems = new ArrayList<>();
 
     @Column(name = "jalali_year")
     private Integer jalaliYear;

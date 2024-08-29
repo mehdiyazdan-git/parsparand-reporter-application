@@ -33,13 +33,8 @@ public class WarehouseReceiptSpecification {
                 predicates.add(criteriaBuilder.like(root.get("warehouseReceiptDescription"), "%" + searchCriteria.getWarehouseReceiptDescription() + "%"));
             }
             if (searchCriteria.getNotInvoiced() != null && searchCriteria.getNotInvoiced()) {
-                Subquery<Long> subquery = query.subquery(Long.class);
-                Root<WarehouseInvoice> subRoot = subquery.from(WarehouseInvoice.class);
-                subquery.select(subRoot.get("id")).where(
-                        criteriaBuilder.equal(subRoot.get("warehouseReceipt"), root),
-                        criteriaBuilder.isNull(subRoot.get("invoice"))
-                );
-                predicates.add(criteriaBuilder.not(criteriaBuilder.exists(subquery)));
+                Join<WarehouseReceipt, WarehouseInvoice> invoiceJoin = root.join("warehouseInvoices", JoinType.LEFT);
+                predicates.add(criteriaBuilder.isNull(invoiceJoin.get("invoice")));
             }
             if (searchCriteria.getCustomerId() != null){
                 predicates.add(criteriaBuilder.equal(root.get("customer").get("id"), searchCriteria.getCustomerId()));

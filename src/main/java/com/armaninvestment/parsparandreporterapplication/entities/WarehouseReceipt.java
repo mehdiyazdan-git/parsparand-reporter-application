@@ -16,10 +16,6 @@ import java.util.Set;
 @ToString
 @RequiredArgsConstructor
 @Table(name = "warehouse_receipt")
-@NamedEntityGraph(
-        name = "WarehouseReceipt.withItems",
-        attributeNodes = @NamedAttributeNode("warehouseReceiptItems")
-)
 public class WarehouseReceipt{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,6 +59,10 @@ public class WarehouseReceipt{
     @OneToMany(mappedBy = "warehouseReceipt")
     @ToString.Exclude
     private Set<ReportItem> reportItems = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "warehouseReceipt") // Add this line
+    @ToString.Exclude
+    private Set<WarehouseInvoice> warehouseInvoices = new LinkedHashSet<>();
 
 
 
