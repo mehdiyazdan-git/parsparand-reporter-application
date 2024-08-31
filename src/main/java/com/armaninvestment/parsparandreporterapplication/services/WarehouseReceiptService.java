@@ -198,10 +198,6 @@ public class WarehouseReceiptService {
 
         WarehouseReceipt partialUpdate = warehouseReceiptMapper.partialUpdate(warehouseReceiptDto, existingWarehouseReceipt);
 
-        if (!partialUpdate.getYear().getId().equals(warehouseReceiptDto.getYearId())) {
-            partialUpdate.setYear(yearRepository.findById(warehouseReceiptDto.getYearId())
-                    .orElseThrow(() -> new IllegalStateException("سال یافت نشد.")));
-        }
 
         if (!partialUpdate.getCustomer().getId().equals(warehouseReceiptDto.getCustomerId())) {
             partialUpdate.setCustomer(customerRepository.findById(warehouseReceiptDto.getCustomerId())

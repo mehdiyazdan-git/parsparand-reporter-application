@@ -6,9 +6,7 @@ import lombok.*;
 import org.hibernate.proxy.HibernateProxy;
 
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Getter
 @Setter
@@ -50,19 +48,19 @@ public class WarehouseReceipt{
 
     @OneToMany(mappedBy = "warehouseReceipt", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
-    private Set<WarehouseReceiptItem> warehouseReceiptItems = new LinkedHashSet<>();
+    private List<WarehouseReceiptItem> warehouseReceiptItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "warehouseReceipt")
     @ToString.Exclude
-    private Set<InvoiceItem> invoiceItems = new LinkedHashSet<>();
+    private List<InvoiceItem> invoiceItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "warehouseReceipt")
     @ToString.Exclude
-    private Set<ReportItem> reportItems = new LinkedHashSet<>();
+    private List<ReportItem> reportItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "warehouseReceipt") // Add this line
     @ToString.Exclude
-    private Set<WarehouseInvoice> warehouseInvoices = new LinkedHashSet<>();
+    private List<WarehouseInvoice> warehouseInvoices = new ArrayList<>();
 
 
 
