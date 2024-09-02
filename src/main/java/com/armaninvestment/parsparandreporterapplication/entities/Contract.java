@@ -4,9 +4,12 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -33,8 +36,9 @@ public class Contract{
     @Column(name = "start_date")
     private LocalDate startDate;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(cascade = {CascadeType.PERSIST,CascadeType.MERGE})
     @JoinColumn(name = "customer_id")
+    @ToString.Exclude
     private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -51,11 +55,11 @@ public class Contract{
     private Double performanceBond;
 
     @OneToMany(mappedBy = "contract")
-    private Set<Addendum> addenda = new LinkedHashSet<>();
+    private List<Addendum> addenda = new ArrayList<>();
 
     @OneToMany(mappedBy = "contract",cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ContractItem> contractItems = new LinkedHashSet<>();
+    private List<ContractItem> contractItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "contract")
-    private Set<Invoice> invoices = new LinkedHashSet<>();
+    private List<Invoice> invoices = new ArrayList<>();
 }

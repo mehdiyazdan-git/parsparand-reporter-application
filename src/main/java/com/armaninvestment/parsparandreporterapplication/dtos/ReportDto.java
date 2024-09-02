@@ -25,13 +25,4 @@ public class ReportDto implements Serializable {
     private Double totalPrice;
     private Long totalQuantity;
     private Set<ReportItemDto> reportItems = new LinkedHashSet<>();
-
-    public ReportDto(Long id, LocalDate reportDate, String reportExplanation, Long yearId, Double totalPrice, Long totalQuantity) {
-        this.id = id;
-        this.reportDate = reportDate;
-        this.reportExplanation = reportExplanation;
-        this.yearId = yearId;
-        this.totalPrice = totalPrice;
-        this.totalQuantity = totalQuantity;
-    }
 }

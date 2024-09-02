@@ -8,7 +8,10 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,5 +35,5 @@ public class ContractDto implements Serializable {
     private Double performanceBond;
     private Long totalQuantity;
     private Double totalPrice;
-    private Set<ContractItemDto> contractItems = new LinkedHashSet<>();
+    private List<ContractItemDto> contractItems = new ArrayList<>();
 }

@@ -2,9 +2,11 @@ package com.armaninvestment.parsparandreporterapplication.controllers;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractDto;
 import com.armaninvestment.parsparandreporterapplication.dtos.ContractSelectDto;
+import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.searchForms.ContractSearch;
 import com.armaninvestment.parsparandreporterapplication.services.ContractService;
 import com.armaninvestment.parsparandreporterapplication.utils.FileMediaType;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
@@ -45,16 +47,49 @@ public class ContractController {
         return ResponseEntity.ok(contractService.getContractById(id));
     }
 
-    @PostMapping(path = {"/",""})
-    public ResponseEntity<ContractDto> createContract(@RequestBody ContractDto contractDto){
-        return ResponseEntity.ok(contractService.createContract(contractDto));
+    @PostMapping(path = {"/", ""})
+    public ResponseEntity<?> createContract(@RequestBody ContractDto contractDto) {
+        try {
+            ContractDto createdContract = contractService.createContract(contractDto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdContract);
+        } catch (ConflictException e) {
+            logger.error("Conflict: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (EntityNotFoundException e) {
+            logger.error("Entity not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid input : {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Unexpected error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("خطایی در سرور رخ داد.");
+        }
     }
+
+
 
 
     @PutMapping(path = {"/{id}"})
-    public ResponseEntity<ContractDto> updateContract(@PathVariable Long id, @RequestBody ContractDto contractDto){
-        return ResponseEntity.ok(contractService.updateContract(id, contractDto));
+    public ResponseEntity<?> updateContract(@PathVariable Long id, @RequestBody ContractDto contractDto) {
+        try {
+            ContractDto updatedContract = contractService.updateContract(id, contractDto);
+            return ResponseEntity.ok(updatedContract);
+        } catch (EntityNotFoundException e) {
+            logger.error("Contract not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            logger.error("Invalid state: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid input: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error(String.format("An error occurred: %s", e.getMessage()), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("خطایی در سرور رخ داد.");
+        }
     }
+
 
     @DeleteMapping(path = {"/{id}"})
     public ResponseEntity<Void> deleteContract(@PathVariable Long id){

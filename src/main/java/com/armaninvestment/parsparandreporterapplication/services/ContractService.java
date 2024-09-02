@@ -3,6 +3,7 @@ package com.armaninvestment.parsparandreporterapplication.services;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.*;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
+import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.exceptions.DatabaseIntegrityViolationException;
 import com.armaninvestment.parsparandreporterapplication.mappers.ContractItemMapper;
 import com.armaninvestment.parsparandreporterapplication.mappers.ContractMapper;
@@ -18,12 +19,13 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -33,9 +35,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.armaninvestment.parsparandreporterapplication.utils.DateConvertor.convertGregorianToJalali;
+import static com.armaninvestment.parsparandreporterapplication.utils.DateConvertor.findYearFromLocalDate;
 import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.*;
 
 @Service
@@ -51,6 +56,8 @@ public class ContractService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    Logger logger = org.apache.logging.log4j.LogManager.getLogger(ContractService.class);
 
     public Page<ContractDto> findAll(int page, int size, String sortBy, String sortDir, ContractSearch contractSearch) {
 
@@ -138,7 +145,7 @@ public class ContractService {
         contractDtoList.forEach(contractDto -> {
             Optional<Contract> optionalContract = contractRepository.findById(contractDto.getId());
             optionalContract.ifPresent(contract -> contractDto
-                    .setContractItems(contract.getContractItems().stream().map(contractItemMapper::toDto).collect(Collectors.toSet()))
+                    .setContractItems(contract.getContractItems().stream().map(contractItemMapper::toDto).collect(Collectors.toList()))
             );
         });
         return contractDtoList;
@@ -186,14 +193,34 @@ public class ContractService {
         return contractMapper.toDto(contractEntity);
     }
 
+    private Boolean isContractNumberUnique(String contractNumber) {
+        return !contractRepository.existsByContractNumber(contractNumber);
+    }
+    private String convertGregorianToJalali(LocalDate date) {
+        return DateConvertor.convertGregorianToJalali(date);
+    }
+    private boolean validateContractDates(LocalDate startDate, LocalDate endDate) {
+        return startDate.isBefore(endDate);
+    }
+
 
     public ContractDto createContract(ContractDto contractDto) {
         if (contractRepository.existsByContractNumber(contractDto.getContractNumber())) {
-            throw new IllegalStateException("یک قرارداد با همین شماره قرارداد قبلاً ثبت شده است.");
+            throw new ConflictException("A contract with this contract number already exists.");
         }
+
+        if (!validateContractDates(contractDto.getStartDate(), contractDto.getEndDate())) {
+            throw new IllegalArgumentException("تاریخ شروع باید کمتر از تاریخ پایان باشد.");
+        }
+
         var contractEntity = contractMapper.toEntity(contractDto);
+
+        contractEntity.setYear(findYearFromLocalDate(contractDto.getStartDate()));
+        contractEntity.setCustomer(customerRepository.findById(contractDto.getCustomerId()).orElseThrow(() -> new EntityNotFoundException("Customer not found")));
+
         var savedContract = contractRepository.save(contractEntity);
         return contractMapper.toDto(savedContract);
+
     }
 
     public ContractDto updateContract(Long id, ContractDto contractDto) {
@@ -203,9 +230,19 @@ public class ContractService {
         if (contractRepository.existsByContractNumberAndIdNot(contractDto.getContractNumber(), id)) {
             throw new IllegalStateException("یک قرارداد دیگر با همین شماره قرارداد وجود دارد.");
         }
+        // Validation: startDate must be less than endDate
+        if (contractDto.getStartDate() != null && contractDto.getEndDate() != null) {
+            if (!contractDto.getStartDate().isBefore(contractDto.getEndDate())) {
+                throw new IllegalArgumentException("تاریخ شروع باید کمتر از تاریخ پایان باشد.");
+            }
+        }
 
-        contractMapper.partialUpdate(contractDto, existingContract);
-        var updatedContract = contractRepository.save(existingContract);
+        existingContract.setCustomer(customerRepository.findById(contractDto.getCustomerId()).orElseThrow(() ->
+                new EntityNotFoundException("مشتری با شناسه " + contractDto.getCustomerId() + " پیدا نشد.")));
+        Contract partialUpdate = contractMapper.partialUpdate(contractDto, existingContract);
+
+
+        var updatedContract = contractRepository.save(partialUpdate);
         return contractMapper.toDto(updatedContract);
     }
 
@@ -336,8 +373,8 @@ public class ContractService {
         row.createCell(cellNum++).setCellValue(contract.getId() != null ? contract.getId() : 0);
         row.createCell(cellNum++).setCellValue(contract.getContractDescription() != null ? contract.getContractDescription() : "");
         row.createCell(cellNum++).setCellValue(contract.getContractNumber() != null ? contract.getContractNumber() : "");
-        row.createCell(cellNum++).setCellValue(contract.getStartDate() != null ? DateConvertor.convertGregorianToJalali(contract.getStartDate()) : "");
-        row.createCell(cellNum++).setCellValue(contract.getEndDate() != null ? DateConvertor.convertGregorianToJalali(contract.getEndDate()) : "");
+        row.createCell(cellNum++).setCellValue(contract.getStartDate() != null ? convertGregorianToJalali(contract.getStartDate()) : "");
+        row.createCell(cellNum++).setCellValue(contract.getEndDate() != null ? convertGregorianToJalali(contract.getEndDate()) : "");
         row.createCell(cellNum++).setCellValue(contract.getCustomerId() != null ? contract.getCustomerId() : 0);
         row.createCell(cellNum++).setCellValue(contract.getCustomerName() != null ? contract.getCustomerName() : "");
         row.createCell(cellNum++).setCellValue(contract.getAdvancePayment() != null ? contract.getAdvancePayment() : 0.0);
@@ -431,14 +468,16 @@ public class ContractService {
                         ContractDto dto = new ContractDto();
                         dto.setContractNumber(contractNumber);
                         dto.setContractDescription(contractDescription);
+                        assert startDate != null;
                         dto.setStartDate(startDate);
+                        assert endDate != null;
                         dto.setEndDate(endDate);
                         dto.setYearId(year.getId());
                         dto.setCustomerId(customer.getId());
                         dto.setAdvancePayment(advancePayment);
                         dto.setInsuranceDeposit(insuranceDeposit);
                         dto.setPerformanceBond(performanceBond);
-                        dto.setContractItems(new LinkedHashSet<>());
+                        dto.setContractItems(new ArrayList<>());
                         return dto;
                     });
 
