@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Entity
@@ -18,7 +20,7 @@ public class InvoiceItem {
     private Integer quantity;
 
     @Column(name = "unit_price")
-    private Long unitPrice;
+    private Double unitPrice;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id")
@@ -31,6 +33,10 @@ public class InvoiceItem {
     @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "warehouse_receipt_id")
     private WarehouseReceipt warehouseReceipt;
+
+    public Double getTotalPrice() {
+        return quantity * unitPrice;
+    }
 
     public Long getProductId() {
         return product != null ? product.getId() : null;

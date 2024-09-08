@@ -132,7 +132,7 @@ public class WarehouseReceiptService {
         warehouseReceiptDtoList.forEach(warehouseReceiptDto -> {
             Optional<WarehouseReceipt> optionalWarehouseReceipt = warehouseReceiptRepository.findById(warehouseReceiptDto.getId());
             optionalWarehouseReceipt.ifPresent(warehouseReceipt -> warehouseReceiptDto
-                    .setWarehouseReceiptItems(warehouseReceipt.getWarehouseReceiptItems().stream().map(warehouseReceiptItemMapper::toDto).collect(Collectors.toSet()))
+                    .setWarehouseReceiptItems(warehouseReceipt.getWarehouseReceiptItems().stream().map(warehouseReceiptItemMapper::toDto).collect(Collectors.toList()))
             );
         });
         return warehouseReceiptDtoList;
@@ -266,7 +266,7 @@ public class WarehouseReceiptService {
                         dto.setCustomerName(customer.getName());
                         dto.setYearId(year.getId());
                         dto.setYearName(year.getName());
-                        dto.setWarehouseReceiptItems(new LinkedHashSet<>());
+                        dto.setWarehouseReceiptItems(new ArrayList<>());
                         return dto;
                     });
 

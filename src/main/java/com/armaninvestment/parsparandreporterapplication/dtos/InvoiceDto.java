@@ -4,17 +4,15 @@ import com.armaninvestment.parsparandreporterapplication.enums.SalesType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * DTO for {@link com.armaninvestment.parsparandreporterapplication.entities.Invoice}
@@ -42,4 +40,8 @@ public class InvoiceDto implements Serializable {
     private Long totalQuantity;
     private Double totalPrice;
     private List<InvoiceItemDto> invoiceItems = new ArrayList<>();
+
+    public Double calculateTotalAmount() {
+        return invoiceItems.stream().mapToDouble(InvoiceItemDto::getTotalPrice).sum();
+    }
 }

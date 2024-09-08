@@ -29,9 +29,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.*;
 
@@ -163,19 +167,19 @@ public class InvoiceService {
     }
 
     private Double calculateTotalPrice(List<InvoiceDto> list) {
+
         return list.stream()
-                .map(dto -> dto.getInvoiceItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum())
-                .mapToDouble(Double::doubleValue)
+                .mapToDouble(dto -> dto.getInvoiceItems()
+                        .stream()
+                        .mapToDouble(InvoiceItemDto::getTotalPrice)
+                        .sum())
                 .sum();
     }
 
     private Double calculateTotalQuantity(List<InvoiceDto> list) {
         return list.stream()
-                .map(dto -> dto.getInvoiceItems().stream().mapToDouble(InvoiceItemDto::getQuantity).sum())
-                .mapToDouble(Double::doubleValue)
-                .sum();
+                .mapToDouble(dto -> dto.getInvoiceItems().stream().mapToDouble(InvoiceItemDto::getQuantity).sum()).sum();
     }
-
     private List<InvoiceDto> convertToDtoList(List<Tuple> tuples) {
         TupleQueryHelper<InvoiceDto, Tuple> helper = new TupleQueryHelper<>(InvoiceDto.class);
         List<InvoiceDto> invoiceDtoList = helper.convertToDtoList(tuples);
@@ -225,7 +229,6 @@ public class InvoiceService {
             return invoiceSelectDtos;
 
         } catch (Exception e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -406,8 +409,8 @@ public class InvoiceService {
                     });
 
                     InvoiceItemDto itemDto = new InvoiceItemDto();
-                    itemDto.setQuantity(quantity);
-                    itemDto.setUnitPrice(unitPrice);
+                    itemDto.setQuantity(Long.valueOf(quantity));
+                    itemDto.setUnitPrice(Double.valueOf(unitPrice));
                     itemDto.setProductId(product.getId());
                     itemDto.setWarehouseReceiptId(warehouseReceipt.getId());
                     invoiceDto.getInvoiceItems().add(itemDto);

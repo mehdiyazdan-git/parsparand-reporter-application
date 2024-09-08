@@ -7,7 +7,9 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -28,5 +30,5 @@ public class WarehouseReceiptDto implements Serializable {
     private Long yearName;
     private Long totalQuantity;
     private Double totalPrice;
-    private Set<WarehouseReceiptItemDto> warehouseReceiptItems = new LinkedHashSet<>();
+    private List<WarehouseReceiptItemDto> warehouseReceiptItems = new ArrayList<>();
 }

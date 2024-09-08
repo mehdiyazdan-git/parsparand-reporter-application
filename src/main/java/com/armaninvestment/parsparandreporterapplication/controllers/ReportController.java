@@ -65,7 +65,6 @@ public class ReportController {
 
     void logErrorMessage(Exception ex) {
         logger.error("خطا در بروز رسانی: {}", ex.getMessage());
-        ex.printStackTrace();
     }
 
     @PutMapping(path = {"/{id}"})
@@ -124,11 +123,11 @@ public class ReportController {
         } catch (IOException e) {
             logger.error("Error in method importReportsFromExcel: Failed to import reports from Excel file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to import reports from Excel file: " + e.getMessage());
+                    .body(String.format("Failed to import reports from Excel file: %s", e.getMessage()));
         } catch (Exception e) {
             logger.error("Error in method importReportsFromExcel: Error processing Excel file", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Error processing Excel file: " + e.getMessage());
+                    .body(String.format("Error processing Excel file: %s", e.getMessage()));
         }
     }
 
@@ -156,9 +155,8 @@ public class ReportController {
             }).toList();
             return ResponseEntity.ok(list);
         } catch (Exception e) {
-            e.printStackTrace();
             logger.error("Error in method getMonthlyReportByProduct: Error generating monthly report by product", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(String.format("Error generating monthly report by product: %s", e.getMessage()));
         }
     }
 

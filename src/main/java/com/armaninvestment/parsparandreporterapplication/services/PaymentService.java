@@ -35,17 +35,6 @@ import java.util.stream.Collectors;
 import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.convertToDate;
 import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.getCellStringValue;
 
-//public class PaymentDto implements Serializable {
-//    private Long id;
-//    private LocalDate paymentDate;
-//    private String paymentDescription;
-//    private Long customerId;
-//    private String customerName;
-//    private Long yearId;
-//    private Long yearName;
-//    private Double paymentAmount;
-//    private PaymentSubject paymentSubject;
-//}
 
 @Service
 @RequiredArgsConstructor

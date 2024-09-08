@@ -3,10 +3,13 @@ package com.armaninvestment.parsparandreporterapplication.mappers;
 import com.armaninvestment.parsparandreporterapplication.dtos.InvoiceDto;
 import com.armaninvestment.parsparandreporterapplication.entities.Invoice;
 import com.armaninvestment.parsparandreporterapplication.entities.InvoiceSelectDto;
+import com.armaninvestment.parsparandreporterapplication.entities.VATRate;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
 import org.mapstruct.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Set;
 
@@ -16,6 +19,7 @@ public interface InvoiceMapper {
     @Mapping(source = "invoiceStatusId", target = "invoiceStatus.id")
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(invoiceDto.getIssuedDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(invoiceDto.getIssuedDate()))")
+    @Mapping(target = "vatAmount", expression = "java(calculateVAT(invoiceDto.calculateTotalAmount()))")
     @Mapping(source = "customerId", target = "customer.id")
     @Mapping(source = "contractId", target = "contract.id")
     @Mapping(source = "yearId", target = "year.id")
@@ -37,6 +41,7 @@ public interface InvoiceMapper {
     @Mapping(source = "contractId", target = "contract.id")
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(invoiceDto.getIssuedDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(invoiceDto.getIssuedDate()))")
+    @Mapping(target = "vatAmount", expression = "java(calculateVAT(invoiceDto.calculateTotalAmount()))")
     Invoice partialUpdate(InvoiceDto invoiceDto, @MappingTarget Invoice invoice);
 
 
@@ -63,5 +68,11 @@ public interface InvoiceMapper {
         DateConverter dateConverter = new DateConverter();
         JalaliDate jalaliDate = dateConverter.gregorianToJalali(date.getYear(), date.getMonthValue(), date.getDayOfMonth());
         return jalaliDate.getMonthPersian().getValue();
+    }
+    default Double calculateVAT(Double totalAmount) {
+        if (totalAmount == null) {
+            return null;
+        }
+        return totalAmount * 0.09; // Assuming VAT is 9%
     }
 }

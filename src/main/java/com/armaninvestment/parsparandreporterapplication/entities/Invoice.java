@@ -5,8 +5,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.proxy.HibernateProxy;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -29,6 +31,18 @@ public class Invoice{
     @Column(name = "issued_date")
     private LocalDate issuedDate;
 
+    @ManyToOne
+    @JoinColumn(name = "vat_rate_id")
+    private VATRate vatRate;
+
+    @JoinColumn(name = "vat_amount")
+    private Double vatAmount;
+
+    @JoinColumn(name = "total_amount")
+    private Double totalAmount;
+
+    @Column(name = "total_amount_with_vat")
+    private Double totalAmountWithVat;
 
     @Column(name = "sales_type", length = 20)
     @Enumerated(EnumType.STRING)
@@ -67,8 +81,6 @@ public class Invoice{
     @Column(name = "performance_bound")
     private Long performanceBound;
 
-
-
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private List<InvoiceItem> invoiceItems = new ArrayList<>();
@@ -78,6 +90,16 @@ public class Invoice{
 
     @Column(name = "month")
     private Integer month;
+
+    public Double calculateTotalAmount() {
+        return invoiceItems
+                .stream()
+                .map(InvoiceItem::getTotalPrice)
+                .mapToDouble(Double::doubleValue).sum();
+    }
+    public Double calculateTotalAmountWithVat() {
+        return calculateTotalAmount() * (1 + getVatRate().getRate());
+    }
 
     @Override
     public final boolean equals(Object o) {

@@ -31,7 +31,7 @@ public class InvoiceSearch implements Serializable {
     private String contractNumber;
     private String invoiceStatusName;
     private Integer jalaliYear;
-    private Long totalQuantity;
+    private Double totalQuantity;
     private Double totalPrice;
     private Integer page;
     private Integer size;
