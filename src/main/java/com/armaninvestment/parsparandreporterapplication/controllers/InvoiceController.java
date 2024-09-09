@@ -36,8 +36,8 @@ public class InvoiceController {
     }
     @GetMapping("/select")
     public ResponseEntity<?> searchInvoices(
-            @RequestParam String searchQuery,
-            @RequestParam Integer jalaliYear) {
+            @RequestParam(required = false, defaultValue = "") String searchQuery,
+            @RequestParam(required = false,defaultValue = "1403") Integer jalaliYear) {
 
         try {
             List<InvoiceSelectDto> invoices = invoiceService.searchInvoiceByDescriptionKeywords(searchQuery, jalaliYear);

@@ -33,7 +33,7 @@ public class YearController {
         return ResponseEntity.ok(years);
     }
     @GetMapping(path = "/select")
-    public ResponseEntity<?> yearSelect() {
+    public ResponseEntity<?> yearSelect(@RequestParam(value = "searchQuery",required = false) String searchQuery) {
         return ResponseEntity.ok(yearService.yearSelect());
     }
 
