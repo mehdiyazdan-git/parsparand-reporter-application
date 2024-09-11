@@ -241,12 +241,23 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceDto createInvoice(InvoiceDto invoiceDto) {
-        validateInvoiceUniqueness(invoiceDto);
+
 
         var invoiceEntity = invoiceMapper.toEntity(invoiceDto);
+        if (invoiceDto.getContractId() != null)
         invoiceEntity.setContract(contractRepository.findById(invoiceDto.getContractId()).orElseThrow());
+        if (invoiceDto.getCustomerId() != null)
         invoiceEntity.setCustomer(customerRepository.findById(invoiceDto.getCustomerId()).orElseThrow());
-        invoiceEntity.setYear(yearRepository.findById(invoiceDto.getYearId()).orElseThrow());
+        invoiceEntity.setYear(yearRepository.findByName(Long.valueOf(invoiceEntity.getJalaliYear())).orElseThrow());
+        if (invoiceDto.getInvoiceStatusId() != null)
+        invoiceEntity.setInvoiceStatus(invoiceStatusRepository.findById(invoiceDto.getInvoiceStatusId()).orElseThrow());
+        validateInvoiceUniqueness(invoiceDto);
+        invoiceEntity.getInvoiceItems().forEach(item -> {
+            Product product = productRepository.findById(item.getProductId()).orElseThrow(() -> new IllegalStateException("کالای مورد نظر پیدا نشد."));
+            item.setProduct(product);
+            WarehouseReceipt warehouseReceipt = warehouseReceiptRepository.findById(item.getWarehouseReceiptId()).orElseThrow(() -> new IllegalStateException("رسید انبار مورد نظر پیدا نشد."));
+            item.setWarehouseReceipt(warehouseReceipt);
+        });
         var savedInvoice = invoiceRepository.save(invoiceEntity);
         WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
         warehouseInvoice.setInvoice(savedInvoice);

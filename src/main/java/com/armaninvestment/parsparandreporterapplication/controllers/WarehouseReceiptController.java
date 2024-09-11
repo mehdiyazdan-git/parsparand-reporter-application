@@ -65,12 +65,12 @@ public class WarehouseReceiptController {
     }
 
     @PostMapping(path = {"/", ""})
-    public ResponseEntity<WarehouseReceiptDto> createWarehouseReceipt(@RequestBody WarehouseReceiptDto warehouseReceiptDto){
+    public ResponseEntity<?> createWarehouseReceipt(@RequestBody WarehouseReceiptDto warehouseReceiptDto){
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(warehouseReceiptService.createWarehouseReceipt(warehouseReceiptDto));
         }catch (Exception e){
             logger.error("Error occurred while creating warehouse receipt: ", e);
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

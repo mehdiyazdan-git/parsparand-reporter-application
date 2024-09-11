@@ -175,11 +175,16 @@ public class WarehouseReceiptService {
     @Transactional
     public WarehouseReceiptDto createWarehouseReceipt(WarehouseReceiptDto warehouseReceiptDto) {
 
-        if (warehouseReceiptRepository.existsByWarehouseReceiptNumberAndYearId(warehouseReceiptDto.getWarehouseReceiptNumber(), warehouseReceiptDto.getYearId())) {
+        var entity = warehouseReceiptMapper.toEntity(warehouseReceiptDto);
+
+        entity.setYear(yearRepository.findByName(Long.valueOf(entity.getJalaliYear())).orElseThrow());
+        entity.setCustomer(customerRepository.findById(warehouseReceiptDto.getCustomerId()).orElseThrow());
+
+        if (warehouseReceiptRepository.existsByWarehouseReceiptNumberAndYearId(entity.getWarehouseReceiptNumber(), entity.getYear().getId())) {
             throw new IllegalStateException("یک رسید انبار با این شماره برای سال مورد نظر قبلاً ثبت شده است.");
         }
-        var warehouseReceiptEntity = warehouseReceiptMapper.toEntity(warehouseReceiptDto);
-        var savedWarehouseReceipt = warehouseReceiptRepository.save(warehouseReceiptEntity);
+
+        var savedWarehouseReceipt = warehouseReceiptRepository.save(entity);
         WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
         warehouseInvoice.setWarehouseReceipt(savedWarehouseReceipt);
         warehouseInvoiceRepository.save(warehouseInvoice);

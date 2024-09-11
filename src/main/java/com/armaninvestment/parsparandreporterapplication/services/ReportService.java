@@ -124,7 +124,7 @@ public class ReportService {
         reportDtoList.forEach(reportDto -> {
             Optional<Report> optionalReport = reportRepository.findById(reportDto.getId());
             optionalReport.ifPresent(report -> reportDto
-                    .setReportItems(report.getReportItems().stream().map(reportItemMapper::toDto).collect(Collectors.toSet()))
+                    .setReportItems(report.getReportItems().stream().map(reportItemMapper::toDto).collect(Collectors.toList()))
             );
         });
         return reportDtoList;
@@ -169,11 +169,14 @@ public class ReportService {
         }
 
         Report reportEntity = reportMapper.toEntity(reportDto);
+
+        reportEntity.setYear(yearRepository.findByName(Long.valueOf(reportEntity.getJalaliYear())).orElseThrow());
+
         Report savedReport = reportRepository.save(reportEntity);
         return reportMapper.toDto(savedReport);
     }
 
-    private void validateReportItemsForCreation(Set<ReportItemDto> reportItemDtos) {
+    private void validateReportItemsForCreation(List<ReportItemDto> reportItemDtos) {
         for (ReportItemDto reportItemDto : reportItemDtos) {
             if (reportItemRepository.existsByWarehouseReceiptId(reportItemDto.getWarehouseReceiptId())) {
                 WarehouseReceipt warehouseReceipt = warehouseReceiptRepository.findById(reportItemDto.getWarehouseReceiptId())
@@ -207,7 +210,7 @@ public class ReportService {
         return reportMapper.toDto(updatedReport);
     }
 
-    private void validateReportItems(Set<ReportItemDto> reportItemDtos) throws ConflictException {
+    private void validateReportItems(List<ReportItemDto> reportItemDtos) throws ConflictException {
         for (ReportItemDto reportItemDto : reportItemDtos) {
             if (reportItemRepository.existsByWarehouseReceiptIdAndIdNot(reportItemDto.getWarehouseReceiptId(), reportItemDto.getId())) {
                 WarehouseReceipt warehouseReceipt = warehouseReceiptRepository.findById(reportItemDto.getWarehouseReceiptId())
@@ -377,7 +380,7 @@ public class ReportService {
                         dto.setReportDate(reportDate);
                         dto.setReportExplanation(reportExplanation);
                         dto.setYearId(year.getId());
-                        dto.setReportItems(new LinkedHashSet<>());
+                        dto.setReportItems(new ArrayList<>());
                         return dto;
                     });
 
