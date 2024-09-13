@@ -28,6 +28,16 @@ public class AdjustmentDto implements Serializable {
     private LocalDate adjustmentDate;
     private Long adjustmentNumber;
     private Long yearId;
-
-    // id, adjustmentType, description, quantity, unitPrice, invoiceId, adjustmentDate, adjustmentNumber, yearId
 }
+
+//public enum AdjustmentType {
+//    POSITIVE,
+//    NEGATIVE;
+
+//                            adjustmentType: 'POSITIVE',
+//                            description: '',
+//                            quantity: '',
+//                            unitPrice: '',
+//                            invoiceId: '',
+//                            adjustmentDate: '',
+//                            adjustmentNumber: '',

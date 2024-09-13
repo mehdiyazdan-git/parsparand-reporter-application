@@ -19,6 +19,14 @@ public class AdjustmentController {
     // implement log4j
     private static final org.apache.logging.log4j.Logger logger = org.apache.logging.log4j.LogManager.getLogger(AdjustmentController.class);
 
+    /**
+     * @param page : page number
+     * @param size : number of items per page
+     * @param sortBy : field to sort by
+     * @param order : ASC or DESC
+     * @param search : searchForm class
+     * @return : page of AdjustmentDto
+     */
     @GetMapping
     public ResponseEntity<Page<AdjustmentDto>> getAllAdjustmentsByCriteria(
             @RequestParam(defaultValue = "0") int page,
