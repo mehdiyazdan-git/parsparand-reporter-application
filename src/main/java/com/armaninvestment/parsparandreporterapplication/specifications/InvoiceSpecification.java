@@ -48,10 +48,6 @@ public class InvoiceSpecification {
                 Join<Invoice, Customer> customerJoin = root.join("customer", JoinType.LEFT);
                 predicates.add(criteriaBuilder.like(customerJoin.get("name"), "%" + searchCriteria.getCustomerName() + "%"));
             }
-            if (searchCriteria.getInvoiceStatusName() != null && !searchCriteria.getInvoiceStatusName().isEmpty()) {
-                Join<Invoice, InvoiceStatus> statusJoin = root.join("invoiceStatus", JoinType.LEFT);
-                predicates.add(criteriaBuilder.like(statusJoin.get("statusName"), "%" + searchCriteria.getInvoiceStatusName() + "%"));
-            }
             if (searchCriteria.getJalaliYear() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("jalaliYear"), searchCriteria.getJalaliYear()));
             }

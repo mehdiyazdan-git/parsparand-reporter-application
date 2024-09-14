@@ -29,15 +29,3 @@ public class AdjustmentDto implements Serializable {
     private Long adjustmentNumber;
     private Long yearId;
 }
-
-//public enum AdjustmentType {
-//    POSITIVE,
-//    NEGATIVE;
-
-//                            adjustmentType: 'POSITIVE',
-//                            description: '',
-//                            quantity: '',
-//                            unitPrice: '',
-//                            invoiceId: '',
-//                            adjustmentDate: '',
-//                            adjustmentNumber: '',

@@ -26,7 +26,7 @@ public class InvoiceController {
     @GetMapping(path = {"/", ""})
     public ResponseEntity<Page<InvoiceDto>> getAllInvoicesByCriteria(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "ASC") String order,
             InvoiceSearch search

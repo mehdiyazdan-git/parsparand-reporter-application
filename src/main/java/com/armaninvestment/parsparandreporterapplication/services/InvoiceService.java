@@ -30,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
@@ -59,67 +60,90 @@ public class InvoiceService {
 
     public Page<InvoiceDto> findAll(int page, int size, String sortBy, String sortDir, InvoiceSearch invoiceSearch) {
 
+        // Create a CriteriaBuilder object to build the query
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        // Create a CriteriaQuery object to query the database
         CriteriaQuery<Tuple> cq = cb.createTupleQuery();
+        // Specify the root of the query (the Invoice entity)
         Root<Invoice> root = cq.from(Invoice.class);
+        // Join the Invoice entity with the InvoiceItem entity
         Join<Invoice, InvoiceItem> invoiceItemJoin = root.join("invoiceItems", JoinType.LEFT);
 
-        // Aggregation
+        Join<Invoice,Contract> contractJoin = root.join("contract", JoinType.LEFT);
+        Join<Invoice,Customer> customerJoin = root.join("customer", JoinType.LEFT);
+
+        // define contractNumber using contractJoin
+        Expression<String> contractNumber = contractJoin.get("contractNumber");
+        // define contract id using contractJoin
+        Expression<Long> contractId = contractJoin.get("id");
+
+        // define customerName using customerJoin
+        Expression<String> customerName = customerJoin.get("name");
+        // define customer id using customerJoin
+        Expression<Long> customerId = customerJoin.get("id");
+
+        // define Aggregation columns by expressions like totalQuantity and totalPrice
         Expression<Long> totalQuantity = cb.sum(cb.toLong(invoiceItemJoin.get("quantity")));
         Expression<Double> totalPrice = cb.sum(cb.prod(cb.toDouble(invoiceItemJoin.get("unitPrice")), cb.toDouble(invoiceItemJoin.get("quantity"))));
 
-        // Select with coalesce to handle null values
+        // define multiselect columns
         cq.multiselect(
                 root.get("id").alias("id"),
-                cb.coalesce(root.get("dueDate"), LocalDate.of(1970, 1, 1)).alias("dueDate"),
-                cb.coalesce(root.get("invoiceNumber"), 0L).alias("invoiceNumber"),
-                cb.coalesce(root.get("issuedDate"), LocalDate.of(1970, 1, 1)).alias("issuedDate"),
-                cb.coalesce(root.get("salesType"), SalesType.CASH_SALES).alias("salesType"),
-                cb.coalesce(root.get("contract").get("id"), 0L).alias("contractId"),
-                cb.coalesce(root.get("contract").get("contractNumber"), "").alias("contractNumber"),
-                cb.coalesce(root.get("customer").get("id"), 0L).alias("customerId"),
-                cb.coalesce(root.get("customer").get("name"), "").alias("customerName"),
-                cb.coalesce(root.get("invoiceStatus").get("id"), 0).alias("invoiceStatusId"),
-                cb.coalesce(root.get("advancedPayment"), 0L).alias("advancedPayment"),
-                cb.coalesce(root.get("insuranceDeposit"), 0L).alias("insuranceDeposit"),
-                cb.coalesce(root.get("performanceBound"), 0L).alias("performanceBound"),
-                cb.coalesce(root.get("year").get("id"), 0L).alias("yearId"),
-                cb.coalesce(root.get("year").get("name"), 1402L).alias("yearName"),
-                cb.coalesce(root.get("jalaliYear"), 0).alias("jalaliYear"),
-                cb.coalesce(totalPrice, 0.0).alias("totalPrice"),
-                cb.coalesce(totalQuantity, 0L).alias("totalQuantity")
+                root.get("dueDate").alias("dueDate"),
+                root.get("invoiceNumber").alias("invoiceNumber"),
+                root.get("issuedDate").alias("issuedDate"),
+                root.get("salesType").alias("salesType"),
+                // columns from joined tables
+                contractId.alias("contractId"),
+                contractNumber.alias("contractNumber"),
+                customerId.alias("customerId"),
+                customerName.alias("customerName"),
+                root.get("invoiceStatus").get("id").alias("invoiceStatusId"),
+                root.get("advancedPayment").alias("advancedPayment"),
+                root.get("insuranceDeposit").alias("insuranceDeposit"),
+                root.get("performanceBound").alias("performanceBound"),
+                root.get("year").get("id").alias("yearId"),
+                root.get("year").get("name").alias("yearName"),
+                root.get("jalaliYear").alias("jalaliYear"),
+                // aggregation columns
+                totalPrice.alias("totalPrice"),
+                totalQuantity.alias("totalQuantity")
         );
 
-        // Specification
+        // prepare specifications
         Specification<Invoice> specification = InvoiceSpecification.bySearchCriteria(invoiceSearch);
         Predicate specificationPredicate = specification.toPredicate(root, cq, cb);
 
         if (specificationPredicate != null) {
             cq.where(specificationPredicate);
         }
-
+        // Group by
         cq.groupBy(
                 root.get("id"),
                 root.get("dueDate"),
                 root.get("invoiceNumber"),
                 root.get("issuedDate"),
                 root.get("salesType"),
-                root.get("contract").get("id"),
-                root.get("contract").get("contractNumber"),
-                root.get("customer").get("id"),
-                root.get("customer").get("name"),
+                contractId,
+                contractNumber,
+                customerId,
+                customerName,
                 root.get("invoiceStatus").get("id"),
                 root.get("year").get("id"),
                 root.get("year").get("name"),
                 root.get("jalaliYear")
         );
-
+        // This code dynamically sorts a JPA query, handling cases where the sort column (`searchForm.sortBy`) might not be
+        // a direct attribute of the main entity. It uses a `switch` statement to apply specific sorting logic for
+        // calculated values or attributes of related entities, ensuring flexibility and type safety.
         switch (Objects.requireNonNull(sortBy)) {
             case "totalPrice" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalPrice) : cb.desc(totalPrice));
             case "totalQuantity" ->
                     cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalQuantity) : cb.desc(totalQuantity));
             case "customerName" ->
-                    cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get("customer").get("name")) : cb.desc(root.get("customer").get("name")));
+                cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(customerName) : cb.desc(customerName));
+            case "contractNumber" ->
+                cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(contractNumber) : cb.desc(contractNumber));
             default ->
                     cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get(sortBy)) : cb.desc(root.get(sortBy)));
         }
@@ -136,8 +160,49 @@ public class InvoiceService {
         }
 
         // Convert to DTO
-        List<InvoiceDto> invoiceDtoList = convertToDtoList(tuples);
+//        List<InvoiceDto> invoiceDtoList = convertToDtoList(tuples);
 
+        // Convert tuple to DTO list explicitly
+        List<InvoiceDto> invoiceDtoList = tuples.stream().map(tuple -> {
+            InvoiceDto invoiceDto = new InvoiceDto();
+            invoiceDto.setId((Long) tuple.get("id"));
+            invoiceDto.setDueDate((LocalDate) tuple.get("dueDate"));
+            invoiceDto.setInvoiceNumber((Long) tuple.get("invoiceNumber"));
+            invoiceDto.setIssuedDate((LocalDate) tuple.get("issuedDate"));
+
+            // Handle SalesType conversion if necessary
+            Object salesTypeValue = tuple.get("salesType");
+            if (salesTypeValue instanceof SalesType) {
+                invoiceDto.setSalesType((SalesType) salesTypeValue);
+            } else if (salesTypeValue instanceof String) {
+                invoiceDto.setSalesType(SalesType.valueOf((String) salesTypeValue));
+            }
+            invoiceDto.setContractId((Long) tuple.get("contractId"));
+            invoiceDto.setContractNumber((String) tuple.get("contractNumber"));
+            invoiceDto.setCustomerId((Long) tuple.get("customerId"));
+            invoiceDto.setCustomerName((String) tuple.get("customerName"));
+            invoiceDto.setInvoiceStatusId((Integer) tuple.get("invoiceStatusId"));
+            invoiceDto.setAdvancedPayment((Long) tuple.get("advancedPayment"));
+            invoiceDto.setInsuranceDeposit((Long) tuple.get("insuranceDeposit"));
+            invoiceDto.setPerformanceBound((Long) tuple.get("performanceBound"));
+            invoiceDto.setYearId((Long) tuple.get("yearId"));
+
+            // Set totalQuantity and totalPrice directly from the query result
+            invoiceDto.setTotalQuantity((Long) tuple.get("totalQuantity"));
+            invoiceDto.setTotalPrice((Double) tuple.get("totalPrice"));
+
+            // Initialize invoiceItems list (or you might fetch them separately if needed)
+            invoiceDto.setInvoiceItems(new ArrayList<>());
+
+            return invoiceDto;
+        }).collect(Collectors.toList());
+
+        invoiceDtoList.forEach(invoiceDto -> {
+            Optional<Invoice> optionalInvoice = invoiceRepository.findById(invoiceDto.getId());
+            optionalInvoice.ifPresent(invoice -> invoiceDto
+                    .setInvoiceItems(invoice.getInvoiceItems().stream().map(invoiceItemMapper::toDto).collect(Collectors.toList()))
+            );
+        });
 
 
         // Calculate total pages
@@ -150,7 +215,7 @@ public class InvoiceService {
         );
 
         // entire result set query:
-        List<Tuple> overall  = entityManager.createQuery(cq)
+        List<Tuple> overall = entityManager.createQuery(cq)
                 .setFirstResult(0)
                 .setMaxResults(Integer.MAX_VALUE)
                 .getResultList();
@@ -180,6 +245,7 @@ public class InvoiceService {
         return list.stream()
                 .mapToDouble(dto -> dto.getInvoiceItems().stream().mapToDouble(InvoiceItemDto::getQuantity).sum()).sum();
     }
+
     private List<InvoiceDto> convertToDtoList(List<Tuple> tuples) {
         TupleQueryHelper<InvoiceDto, Tuple> helper = new TupleQueryHelper<>(InvoiceDto.class);
         List<InvoiceDto> invoiceDtoList = helper.convertToDtoList(tuples);
@@ -192,7 +258,6 @@ public class InvoiceService {
         });
         return invoiceDtoList;
     }
-
 
 
     private Long getCount(InvoiceSearch invoiceSearch) {
@@ -245,12 +310,12 @@ public class InvoiceService {
 
         var invoiceEntity = invoiceMapper.toEntity(invoiceDto);
         if (invoiceDto.getContractId() != null)
-        invoiceEntity.setContract(contractRepository.findById(invoiceDto.getContractId()).orElseThrow());
+            invoiceEntity.setContract(contractRepository.findById(invoiceDto.getContractId()).orElseThrow());
         if (invoiceDto.getCustomerId() != null)
-        invoiceEntity.setCustomer(customerRepository.findById(invoiceDto.getCustomerId()).orElseThrow());
+            invoiceEntity.setCustomer(customerRepository.findById(invoiceDto.getCustomerId()).orElseThrow());
         invoiceEntity.setYear(yearRepository.findByName(Long.valueOf(invoiceEntity.getJalaliYear())).orElseThrow());
         if (invoiceDto.getInvoiceStatusId() != null)
-        invoiceEntity.setInvoiceStatus(invoiceStatusRepository.findById(invoiceDto.getInvoiceStatusId()).orElseThrow());
+            invoiceEntity.setInvoiceStatus(invoiceStatusRepository.findById(invoiceDto.getInvoiceStatusId()).orElseThrow());
         validateInvoiceUniqueness(invoiceDto);
         invoiceEntity.getInvoiceItems().forEach(item -> {
             Product product = productRepository.findById(item.getProductId()).orElseThrow(() -> new IllegalStateException("کالای مورد نظر پیدا نشد."));
@@ -292,8 +357,9 @@ public class InvoiceService {
     private void validateReceiptIdUniqueness(InvoiceDto invoiceDto) {
         if (invoiceDto.getInvoiceItems() != null) {
             invoiceDto.getInvoiceItems().forEach(invoiceItemDto -> {
+                Long warehouseReceiptNumber = findWarehouseReceiptById(invoiceItemDto.getWarehouseReceiptId()).getWarehouseReceiptNumber();
                 if (invoiceItemRepository.existsByWarehouseReceiptId(invoiceItemDto.getWarehouseReceiptId())) {
-                    throw new IllegalStateException("برای این شماره حواله قبلا فاکتور صادر شده است.");
+                    throw new IllegalStateException(String.format("برای این شماره حواله قبلا فاکتور صادر شده است. شماره حواله: %s", warehouseReceiptNumber));
                 }
             });
         }
@@ -302,11 +368,16 @@ public class InvoiceService {
     private void validateReceiptIdUniquenessOnUpdateEntity(InvoiceDto invoiceDto) {
         if (invoiceDto.getInvoiceItems() != null) {
             invoiceDto.getInvoiceItems().forEach(invoiceItemDto -> {
+                Long warehouseReceiptNumber = findWarehouseReceiptById(invoiceItemDto.getWarehouseReceiptId()).getWarehouseReceiptNumber();
                 if (invoiceItemRepository.existsByWarehouseReceiptIdAndIdNot(invoiceItemDto.getWarehouseReceiptId(), invoiceItemDto.getId())) {
-                    throw new IllegalStateException("برای این شماره حواله قبلا فاکتور صادر شده است.");
+                    throw new IllegalStateException(String.format("برای این شماره حواله قبلا فاکتور صادر شده است. شماره حواله: %s", warehouseReceiptNumber));
                 }
             });
         }
+    }
+    private WarehouseReceipt findWarehouseReceiptById(Long id) {
+        return warehouseReceiptRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("حواله پیدا نشد."));
     }
 
     public void deleteInvoice(Long id) {
@@ -338,7 +409,7 @@ public class InvoiceService {
                 .collect(Collectors.toMap(InvoiceStatus::getId, invoiceStatus -> invoiceStatus, (existing, replacement) -> existing));
         Map<String, WarehouseReceipt> warehouseReceiptsMap = warehouseReceiptRepository.findAll().stream()
                 .collect(Collectors.toMap(
-                        wr -> wr.getWarehouseReceiptNumber() + "-" + wr.getWarehouseReceiptDate(),
+                        wr ->  String.format("%s-%s",wr.getWarehouseReceiptNumber(),wr.getWarehouseReceiptDate()),
                         wr -> wr,
                         (existing, replacement) -> existing
                 ));
@@ -378,20 +449,22 @@ public class InvoiceService {
 
                     int finalRowNum = rowNum;
                     Year year = Optional.ofNullable(yearsMap.get(yearName))
-                            .orElseThrow(() -> new RowColumnException(finalRowNum, 10, "سال با نام " + yearName + " یافت نشد.", null));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum, 10, String.format("سال با نام %s یافت نشد.",yearName), null));
                     int finalRowNum1 = rowNum;
                     Customer customer = Optional.ofNullable(customersMap.get(customerCode))
-                            .orElseThrow(() -> new RowColumnException(finalRowNum1, 6, "مشتری با کد " + customerCode + " یافت نشد.", null));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum1, 6, String.format("مشتری با کد %s یافت نشد.",customerCode), null));
                     int finalRowNum2 = rowNum;
                     Product product = Optional.ofNullable(productsMap.get(productCode))
-                            .orElseThrow(() -> new RowColumnException(finalRowNum2, 13, "محصول با کد " + productCode + " یافت نشد.", null));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum2, 13, String.format("محصول با کد %s یافت نشد.", productCode), null));
+
                     int finalRowNum3 = rowNum;
                     InvoiceStatus invoiceStatus = Optional.ofNullable(invoiceStatusesMap.get(invoiceStatusId))
-                            .orElseThrow(() -> new RowColumnException(finalRowNum3, 16, "وضعیت فاکتور با شماره " + invoiceNumber + " یافت نشد.", null));
-                    String receiptKey = warehouseReceiptNumber + "-" + warehouseReceiptDate;
+                            .orElseThrow(() -> new RowColumnException(finalRowNum3, 16, String.format("وضعیت فاکتور با شماره %s یافت نشد.", invoiceNumber), null));
+
+                    String receiptKey = String.format("%s-%s", warehouseReceiptNumber, warehouseReceiptDate);
                     int finalRowNum4 = rowNum;
                     warehouseReceipt = Optional.ofNullable(warehouseReceiptsMap.get(receiptKey))
-                            .orElseThrow(() -> new RowColumnException(finalRowNum4, 14, "رسید انبار با شماره " + warehouseReceiptNumber + " و تاریخ " + warehouseReceiptDate + " یافت نشد.", null));
+                            .orElseThrow(() -> new RowColumnException(finalRowNum4, 14, String.format("رسید انبار با شماره %s و تاریخ %s یافت نشد.", warehouseReceiptNumber, warehouseReceiptDate), null));
 
                     // ترکیب شماره فاکتور + تاریخ فاکتور به عنوان کلید Map
                     assert issuedDate != null;
@@ -420,8 +493,8 @@ public class InvoiceService {
                     });
 
                     InvoiceItemDto itemDto = new InvoiceItemDto();
-                    itemDto.setQuantity(Long.valueOf(quantity));
-                    itemDto.setUnitPrice(Double.valueOf(unitPrice));
+                    itemDto.setQuantity(Long.valueOf(Objects.requireNonNull(quantity,"تعداد نمی تواند null باشد.")));
+                    itemDto.setUnitPrice(Double.valueOf(Objects.requireNonNull(unitPrice,"قیمت واحد نمی تواند null باشد.")));
                     itemDto.setProductId(product.getId());
                     itemDto.setWarehouseReceiptId(warehouseReceipt.getId());
                     invoiceDto.getInvoiceItems().add(itemDto);
