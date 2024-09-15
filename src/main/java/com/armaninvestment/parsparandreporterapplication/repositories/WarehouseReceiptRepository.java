@@ -45,7 +45,7 @@ public interface WarehouseReceiptRepository extends JpaRepository<WarehouseRecei
             FROM (
                 SELECT wr.id,
                        wr.warehouse_receipt_number AS receiptNo,
-                       gregorian_to_persian(wr.warehouse_receipt_date) AS receiptDate,
+                       gregorian_to_persian(wr.warehouse_receipt_date + Interval '1 DAY') AS receiptDate,
                        c.name AS customerName,
                        SUM(wri.quantity) AS quantity
                 FROM warehouse_receipt wr

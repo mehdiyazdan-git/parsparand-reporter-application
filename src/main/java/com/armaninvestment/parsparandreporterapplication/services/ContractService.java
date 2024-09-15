@@ -13,13 +13,12 @@ import com.armaninvestment.parsparandreporterapplication.specifications.Contract
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.CustomPageImpl;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
-import com.armaninvestment.parsparandreporterapplication.utils.TupleQueryHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
-import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.*;
@@ -35,11 +34,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.armaninvestment.parsparandreporterapplication.utils.DateConvertor.convertGregorianToJalali;
 import static com.armaninvestment.parsparandreporterapplication.utils.DateConvertor.findYearFromLocalDate;
 import static com.armaninvestment.parsparandreporterapplication.utils.ExcelUtils.*;
 
@@ -111,7 +108,7 @@ public class ContractService {
                 .getResultList().stream().toList();
 
         // Convert to DTO
-        List<ContractDto> contractDtoList = convertToDtoList(tuples);
+        List<ContractDto> contractDtoList = getContractDtos(tuples);
 
 
         // Pagination
@@ -120,7 +117,7 @@ public class ContractService {
                 .setMaxResults(Integer.MAX_VALUE)
                 .getResultList().stream().toList();
 
-        List<ContractDto> overallDtoList = convertToDtoList(overall);
+        List<ContractDto> overallDtoList = getContractDtos(overall);
 
         Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
         Double overallTotalPrice = calculateTotalPrice(overallDtoList);
@@ -138,18 +135,43 @@ public class ContractService {
         pageImpel.setOverallTotalQuantity(overallTotalQuantity);
         return pageImpel;
     }
-    private List<ContractDto> convertToDtoList(List<Tuple> tuples) {
-        TupleQueryHelper<ContractDto, Tuple> helper = new TupleQueryHelper<>(ContractDto.class);
-        List<ContractDto> contractDtoList = helper.convertToDtoList(tuples);
 
-        contractDtoList.forEach(contractDto -> {
+    private @NotNull List<ContractDto> getContractDtos(List<Tuple> tuples) {
+        List<ContractDto> list = tuples.stream().map(tuple -> {
+            ContractDto contractDto = new ContractDto();
+            contractDto.setId(tuple.get("id", Long.class));
+            contractDto.setContractDescription(tuple.get("contractDescription", String.class));
+            contractDto.setContractNumber(tuple.get("contractNumber", String.class));
+            contractDto.setEndDate(tuple.get("endDate", LocalDate.class));
+            contractDto.setStartDate(tuple.get("startDate", LocalDate.class));
+            contractDto.setCustomerId(tuple.get("customerId", Long.class));
+            contractDto.setCustomerName(tuple.get("customerName", String.class));
+            contractDto.setYearId(tuple.get("yearId", Long.class));
+            contractDto.setAdvancePayment(tuple.get("advancePayment", Double.class));
+            contractDto.setInsuranceDeposit(tuple.get("insuranceDeposit", Double.class));
+            contractDto.setPerformanceBond(tuple.get("performanceBond", Double.class));
+            contractDto.setTotalQuantity(tuple.get("totalQuantity", Long.class));
+            contractDto.setTotalPrice(tuple.get("totalPrice", Double.class));
+            return contractDto;
+        }).toList();
+
+        list.forEach(contractDto -> {
             Optional<Contract> optionalContract = contractRepository.findById(contractDto.getId());
-            optionalContract.ifPresent(contract -> contractDto
-                    .setContractItems(contract.getContractItems().stream().map(contractItemMapper::toDto).collect(Collectors.toList()))
-            );
+            if (optionalContract.isPresent()) {
+                Contract contractEntity = optionalContract.get();
+                contractDto.setContractItems(contractEntity.getContractItems().stream().map(item -> {
+                    ContractItemDto itemDto = new ContractItemDto();
+                    itemDto.setId(item.getId());
+                    itemDto.setQuantity(item.getQuantity());
+                    itemDto.setUnitPrice(item.getUnitPrice());
+                    itemDto.setProductId(item.getProduct().getId());
+                    return itemDto;
+                }).toList());
+            }
         });
-        return contractDtoList;
+        return list;
     }
+
 
     private Double calculateTotalQuantity(List<ContractDto> list) {
         return list.stream()

@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.proxy.HibernateProxy;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Objects;
 
@@ -23,9 +22,6 @@ public class VATRate {
 
     @Column(nullable = false)
     private LocalDate effectiveFrom;
-
-    @Column
-    private LocalDate effectiveTo;
 
     @Override
     public final boolean equals(Object o) {

@@ -80,10 +80,18 @@ public class WarehouseReceiptController {
     }
 
     @DeleteMapping(path = {"/{id}"})
-    public ResponseEntity<Void> deleteWarehouseReceipt(@PathVariable Long id){
-        warehouseReceiptService.deleteWarehouseReceipt(id);
-        return ResponseEntity.noContent().build();
-    }
+    public ResponseEntity<?> deleteWarehouseReceipt(@PathVariable Long id){
+       try {
+           warehouseReceiptService.deleteWarehouseReceipt(id);
+           return ResponseEntity.noContent().build();
+       }catch (IllegalStateException e){
+           logger.error("Error occurred while deleting warehouse receipt: ", e);
+           return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+       }catch (Exception e){
+           logger.error("Error occurred while deleting warehouse receipt: ", e);
+           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("خطا در حذف حواله انبار");
+       }
+       }
 
     @GetMapping(path = "/download-all-warehouse-receipts.xlsx")
     public ResponseEntity<byte[]> downloadAllWarehouseReceiptsExcel(
@@ -121,13 +129,13 @@ public class WarehouseReceiptController {
             return ResponseEntity.ok().headers(headers).body(list);
         } catch (IOException e) {
             logger.error("Error occurred while importing warehouse receipts from Excel: ",e);
-            String errorMessage = "خطا در بارگذاری: " + e.getMessage();
+            String errorMessage = String.format("Error occurred while importing warehouse receipts from Excel: %s", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .headers(headers)
                     .body(errorMessage);
         } catch (Exception e) {
             logger.error("Error occurred while importing warehouse receipts from Excel: ", e);
-            String errorMessage = "خطا در پردازش فایل لکسل: " + e.getMessage();
+            String errorMessage = String.format("Error occurred while importing warehouse receipts from Excel: %s", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .headers(headers)
                     .body(errorMessage);

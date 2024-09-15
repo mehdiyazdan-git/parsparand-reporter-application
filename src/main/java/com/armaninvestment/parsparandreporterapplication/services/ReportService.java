@@ -14,6 +14,7 @@ import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
 import com.armaninvestment.parsparandreporterapplication.utils.TupleQueryHelper;
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -88,7 +89,7 @@ public class ReportService {
                 .setMaxResults(size)
                 .getResultList().stream().toList();
 
-        List<ReportDto> reportDtoList = convertToDtoList(tuples);
+        List<ReportDto> reportDtoList = getReportDtos(tuples);
 
         // Calculate total pages
         PageRequest pageRequest = PageRequest.of(
@@ -105,7 +106,7 @@ public class ReportService {
                 .setMaxResults(Integer.MAX_VALUE)
                 .getResultList().stream().toList();
 
-        List<ReportDto> overallDtoList = convertToDtoList(overall);
+        List<ReportDto> overallDtoList = getReportDtos(overall);
 
 
         Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
@@ -117,18 +118,36 @@ public class ReportService {
         pageImpel.setOverallTotalQuantity(overallTotalQuantity);
         return pageImpel;
     }
-    private List<ReportDto> convertToDtoList(List<Tuple> tuples) {
-        TupleQueryHelper<ReportDto, Tuple> helper = new TupleQueryHelper<>(ReportDto.class);
-        List<ReportDto> reportDtoList = helper.convertToDtoList(tuples);
+    private @NotNull List<ReportDto> getReportDtos(List<Tuple> tuples) {
+        List<ReportDto> list = tuples.stream().map(tuple -> {
+            ReportDto reportDto = new ReportDto();
+            reportDto.setId(tuple.get("id", Long.class));
+            reportDto.setReportDate(tuple.get("reportDate", LocalDate.class));
+            reportDto.setReportExplanation(tuple.get("reportExplanation", String.class));
+            reportDto.setYearId(tuple.get("yearId", Long.class));
+            reportDto.setTotalPrice(tuple.get("totalPrice", Double.class));
+            reportDto.setTotalQuantity(tuple.get("totalQuantity", Long.class));
+            return reportDto;
+        }).toList();
 
-        reportDtoList.forEach(reportDto -> {
+        list.forEach(reportDto -> {
             Optional<Report> optionalReport = reportRepository.findById(reportDto.getId());
-            optionalReport.ifPresent(report -> reportDto
-                    .setReportItems(report.getReportItems().stream().map(reportItemMapper::toDto).collect(Collectors.toList()))
-            );
+            if (optionalReport.isPresent()) {
+                Report reportEntity = optionalReport.get();
+                reportDto.setReportItems(reportEntity.getReportItems().stream().map(item -> {
+                    ReportItemDto itemDto = new ReportItemDto();
+                    itemDto.setId(item.getId());
+                    itemDto.setQuantity(item.getQuantity());
+                    itemDto.setUnitPrice(item.getUnitPrice());
+                    itemDto.setCustomerId(item.getCustomer().getId());
+                    itemDto.setWarehouseReceiptId(item.getWarehouseReceipt().getId());
+                    return itemDto;
+                }).toList());
+            }
         });
-        return reportDtoList;
+        return list;
     }
+
 
     private Double calculateTotalQuantity(List<ReportDto> list) {
     return list.stream()

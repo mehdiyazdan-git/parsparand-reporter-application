@@ -84,10 +84,10 @@ public class InvoiceController {
         try {
             return ResponseEntity.ok(invoiceService.createInvoice(invoiceDto));
         }catch (IllegalStateException e){
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             return ResponseEntity.badRequest().body("در ایجاد فاکتور خطایی رخ داده است");
         }
     }

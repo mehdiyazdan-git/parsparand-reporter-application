@@ -2,6 +2,7 @@ package com.armaninvestment.parsparandreporterapplication.services;
 
 import com.armaninvestment.parsparandreporterapplication.dtos.*;
 import com.armaninvestment.parsparandreporterapplication.entities.*;
+import com.armaninvestment.parsparandreporterapplication.exceptions.ConflictException;
 import com.armaninvestment.parsparandreporterapplication.mappers.WarehouseReceiptItemMapper;
 import com.armaninvestment.parsparandreporterapplication.mappers.WarehouseReceiptMapper;
 import com.armaninvestment.parsparandreporterapplication.repositories.*;
@@ -10,7 +11,6 @@ import com.armaninvestment.parsparandreporterapplication.specifications.Warehous
 import com.armaninvestment.parsparandreporterapplication.utils.CellStyleHelper;
 import com.armaninvestment.parsparandreporterapplication.utils.CustomPageImpl;
 import com.armaninvestment.parsparandreporterapplication.utils.DateConvertor;
-import com.armaninvestment.parsparandreporterapplication.utils.TupleQueryHelper;
 import com.github.eloyzone.jalalicalendar.DateConverter;
 import com.github.eloyzone.jalalicalendar.JalaliDate;
 import jakarta.persistence.EntityManager;
@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -48,6 +50,7 @@ public class WarehouseReceiptService {
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
     private final WarehouseInvoiceRepository warehouseInvoiceRepository;
+    private final InvoiceItemRepository invoiceItemRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -58,38 +61,55 @@ public class WarehouseReceiptService {
         CriteriaQuery<Tuple> cq = cb.createTupleQuery();
         Root<WarehouseReceipt> root = cq.from(WarehouseReceipt.class);
         Join<WarehouseReceipt, WarehouseReceiptItem> warehouseReceiptItemJoin = root.join("warehouseReceiptItems", JoinType.LEFT);
+        Join<WarehouseReceipt, Customer> customerJoin = root.join("customer", JoinType.LEFT);
+        Join<WarehouseReceipt, Year> yearJoin = root.join("year", JoinType.LEFT);
+
+        Expression<Long> yearId = yearJoin.get("id");
+        Expression<String> yearName = yearJoin.get("name");
+        Expression<Long> customerId = customerJoin.get("id");
+        Expression<String> customerName = customerJoin.get("name");
+
 
         // Aggregation
         Expression<Long> totalQuantity = cb.sum(warehouseReceiptItemJoin.get("quantity").as(Long.class));
         Expression<Double> totalPrice = cb.sum(cb.prod(cb.toDouble(warehouseReceiptItemJoin.get("unitPrice")), cb.toDouble(warehouseReceiptItemJoin.get("quantity"))));
 
         // Select
-        CriteriaQuery<Tuple> multiselect = cq.multiselect(
+        cq.multiselect(
                 root.get("id").alias("id"),
                 root.get("warehouseReceiptDate").alias("warehouseReceiptDate"),
                 root.get("warehouseReceiptDescription").alias("warehouseReceiptDescription"),
                 root.get("warehouseReceiptNumber").alias("warehouseReceiptNumber"),
-                root.get("customer").get("id").alias("customerId"),
-                root.get("customer").get("name").alias("customerName"),
-                root.get("year").get("id").alias("yearId"),
-                root.get("year").get("name").alias("yearName"),
+                customerId.alias("customerId"),
+                customerName.alias("customerName"),
+                yearId.alias("yearId"),
+                yearName.alias("yearName"),
                 totalQuantity.alias("totalQuantity"),
                 totalPrice.alias("totalPrice")
         );
 
+
         // Specification
         Specification<WarehouseReceipt> specification = WarehouseReceiptSpecification.bySearchCriteria(warehouseReceiptSearch);
-        cq.groupBy(root.get("id"), root.get("warehouseReceiptDate"), root.get("warehouseReceiptDescription"), root.get("warehouseReceiptNumber"),
-                root.get("customer").get("id"), root.get("customer").get("name"),
-                root.get("year").get("id"), root.get("year").get("name"), root.get("year").get("name"));
+        cq.groupBy(root.get("id"),
+                root.get("warehouseReceiptDate"),
+                root.get("warehouseReceiptDescription"),
+                root.get("warehouseReceiptNumber"),
+                customerId,
+                customerName,
+                yearId,
+                yearName);
         cq.where(specification.toPredicate(root, cq, cb));
 
         // Sorting
         switch (Objects.requireNonNull(sortBy)) {
             case "totalPrice" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalPrice) : cb.desc(totalPrice));
-            case "totalQuantity" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalQuantity) : cb.desc(totalQuantity));
-            case "customerName" -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get("customer").get("name")) : cb.desc(root.get("customer").get("name")));
-            default -> cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get(sortBy)) : cb.desc(root.get(sortBy)));
+            case "totalQuantity" ->
+                    cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(totalQuantity) : cb.desc(totalQuantity));
+            case "customerName" ->
+                    cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get("customer").get("name")) : cb.desc(root.get("customer").get("name")));
+            default ->
+                    cq.orderBy(sortDir.equalsIgnoreCase("asc") ? cb.asc(root.get(sortBy)) : cb.desc(root.get(sortBy)));
         }
 
         // Pagination
@@ -99,7 +119,7 @@ public class WarehouseReceiptService {
                 .getResultList().stream().toList();
 
         // Convert to DTO
-        List<WarehouseReceiptDto> warehouseReceiptDtoList = convertToDtoList(tuples);
+        List<WarehouseReceiptDto> warehouseReceiptDtoList = getWarehouseReceiptDtos(tuples);
 
         // Calculate total pages
         PageRequest pageRequest = PageRequest.of(
@@ -110,12 +130,13 @@ public class WarehouseReceiptService {
                         : Sort.Order.desc(Objects.requireNonNull(sortBy)))
         );
         // entire result set query:
-        List<Tuple> overall  = entityManager.createQuery(cq)
+        List<Tuple> overall = entityManager.createQuery(cq)
                 .setFirstResult(0)
                 .setMaxResults(Integer.MAX_VALUE)
                 .getResultList();
 
-        List<WarehouseReceiptDto> overallDtoList = convertToDtoList(overall);
+        List<WarehouseReceiptDto> overallDtoList = getWarehouseReceiptDtos(overall);
+
 
         Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
         Double overallTotalPrice = calculateTotalPrice(overallDtoList);
@@ -125,17 +146,73 @@ public class WarehouseReceiptService {
         pageImpel.setOverallTotalQuantity(overallTotalQuantity);
         return pageImpel;
     }
-    private List<WarehouseReceiptDto> convertToDtoList(List<Tuple> tuples) {
-        TupleQueryHelper<WarehouseReceiptDto, Tuple> helper = new TupleQueryHelper<>(WarehouseReceiptDto.class);
-        List<WarehouseReceiptDto> warehouseReceiptDtoList = helper.convertToDtoList(tuples);
 
-        warehouseReceiptDtoList.forEach(warehouseReceiptDto -> {
-            Optional<WarehouseReceipt> optionalWarehouseReceipt = warehouseReceiptRepository.findById(warehouseReceiptDto.getId());
-            optionalWarehouseReceipt.ifPresent(warehouseReceipt -> warehouseReceiptDto
-                    .setWarehouseReceiptItems(warehouseReceipt.getWarehouseReceiptItems().stream().map(warehouseReceiptItemMapper::toDto).collect(Collectors.toList()))
-            );
+    //@Data
+    //@AllArgsConstructor
+    //@NoArgsConstructor
+    //@JsonIgnoreProperties(ignoreUnknown = true)
+    //public class WarehouseReceiptDto implements Serializable {
+    //    private Long id;
+    //    private LocalDate warehouseReceiptDate;
+    //    private String warehouseReceiptDescription;
+    //    private Long warehouseReceiptNumber;
+    //    private Long customerId;
+    //    private String customerName;
+    //    private Long yearId;
+    //    private Long yearName;
+    //    private Long totalQuantity;
+    //    private Double totalPrice;
+    //    private List<WarehouseReceiptItemDto> warehouseReceiptItems = new ArrayList<>();
+    //}
+    //@Data
+    //@AllArgsConstructor
+    //@NoArgsConstructor
+    //@JsonIgnoreProperties(ignoreUnknown = true)
+    //public class WarehouseReceiptItemDto implements Serializable {
+    //    private Long id;
+    //    private Integer quantity;
+    //    private Long unitPrice;
+    //    private Long productId;
+    //}
+
+    private @NotNull List<WarehouseReceiptDto> getWarehouseReceiptDtos(List<Tuple> tuples) {
+        List<WarehouseReceiptDto> list = tuples.stream().map(tuple -> {
+            WarehouseReceiptDto dto = new WarehouseReceiptDto();
+            dto.setId(tuple.get("id", Long.class));
+            dto.setWarehouseReceiptDate(tuple.get("warehouseReceiptDate", LocalDate.class));
+            dto.setWarehouseReceiptDescription(tuple.get("warehouseReceiptDescription", String.class));
+            dto.setWarehouseReceiptNumber(tuple.get("warehouseReceiptNumber", Long.class));
+            dto.setCustomerId(tuple.get("customerId", Long.class));
+            dto.setCustomerName(tuple.get("customerName", String.class));
+            dto.setYearId(tuple.get("yearId", Long.class));
+            dto.setYearName(tuple.get("yearName", Long.class));
+            dto.setTotalQuantity(tuple.get("totalQuantity", Long.class));
+            dto.setTotalPrice(tuple.get("totalPrice", Double.class));
+            return dto;
+        }).toList();
+
+        list.forEach(dto -> {
+            Optional<WarehouseReceipt> optional = warehouseReceiptRepository.findById(dto.getId());
+            if (optional.isPresent()) {
+                WarehouseReceipt entity = optional.get();
+                dto.setWarehouseReceiptItems(entity.getWarehouseReceiptItems().stream().map(item -> {
+                    WarehouseReceiptItemDto itemDto = new WarehouseReceiptItemDto();
+                    itemDto.setId(item.getId());
+                    itemDto.setQuantity(item.getQuantity());
+                    itemDto.setUnitPrice(item.getUnitPrice());
+                    itemDto.setProductId(item.getProduct().getId());
+                    return itemDto;
+                }).toList());
+            }
         });
-        return warehouseReceiptDtoList;
+        return list;
+    }
+
+    private Double calculateTotalPrice(List<WarehouseReceiptDto> list) {
+        return list.stream()
+                .map(dto -> dto.getWarehouseReceiptItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum())
+                .mapToDouble(Double::doubleValue)
+                .sum();
     }
 
     private Double calculateTotalQuantity(List<WarehouseReceiptDto> list) {
@@ -144,14 +221,8 @@ public class WarehouseReceiptService {
                 .mapToDouble(Double::doubleValue)
                 .sum();
     }
-    private Double calculateTotalPrice(List<WarehouseReceiptDto> list) {
-        return list.stream()
-                .map(dto -> dto.getWarehouseReceiptItems().stream().mapToDouble(item -> item.getUnitPrice() * item.getQuantity()).sum())
-                .mapToDouble(Double::doubleValue)
-                .sum();
-    }
 
-    private Long getCount(WarehouseReceiptSearch warehouseReceiptSearch){
+    private Long getCount(WarehouseReceiptSearch warehouseReceiptSearch) {
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Long> cq = cb.createQuery(Long.class);
@@ -166,12 +237,11 @@ public class WarehouseReceiptService {
     }
 
 
-
-
     public WarehouseReceiptDto getWarehouseReceiptById(Long id) {
         var warehouseReceiptEntity = warehouseReceiptRepository.findById(id).orElseThrow();
         return warehouseReceiptMapper.toDto(warehouseReceiptEntity);
     }
+
     @Transactional
     public WarehouseReceiptDto createWarehouseReceipt(WarehouseReceiptDto warehouseReceiptDto) {
 
@@ -214,8 +284,11 @@ public class WarehouseReceiptService {
     }
 
     public void deleteWarehouseReceipt(Long id) {
-        warehouseReceiptRepository.deleteById(id);
+        if (invoiceItemRepository.existsByWarehouseReceiptId(id)) {
+            throw new IllegalStateException("ابتدا فاکتور های مرتبط با این رسید انبار را حذف کنید");
+        }
         warehouseInvoiceRepository.deleteByReceiptId(id);
+        warehouseReceiptRepository.deleteById(id);
     }
 
     public String importWarehouseReceiptsFromExcel(MultipartFile file) throws IOException {
@@ -263,17 +336,17 @@ public class WarehouseReceiptService {
                     assert receiptDate != null;
                     WarehouseReceiptDto receiptDto = warehouseReceiptsMap.computeIfAbsent(
                             String.valueOf(receiptNumber).concat(receiptDate.format(DateTimeFormatter.BASIC_ISO_DATE)), k -> {
-                        WarehouseReceiptDto dto = new WarehouseReceiptDto();
-                        dto.setWarehouseReceiptNumber(receiptNumber);
-                        dto.setWarehouseReceiptDate(receiptDate);
-                        dto.setWarehouseReceiptDescription(receiptDescription);
-                        dto.setCustomerId(customer.getId());
-                        dto.setCustomerName(customer.getName());
-                        dto.setYearId(year.getId());
-                        dto.setYearName(year.getName());
-                        dto.setWarehouseReceiptItems(new ArrayList<>());
-                        return dto;
-                    });
+                                WarehouseReceiptDto dto = new WarehouseReceiptDto();
+                                dto.setWarehouseReceiptNumber(receiptNumber);
+                                dto.setWarehouseReceiptDate(receiptDate);
+                                dto.setWarehouseReceiptDescription(receiptDescription);
+                                dto.setCustomerId(customer.getId());
+                                dto.setCustomerName(customer.getName());
+                                dto.setYearId(year.getId());
+                                dto.setYearName(year.getName());
+                                dto.setWarehouseReceiptItems(new ArrayList<>());
+                                return dto;
+                            });
 
                     WarehouseReceiptItemDto itemDto = new WarehouseReceiptItemDto();
                     itemDto.setQuantity(quantity);
@@ -294,9 +367,9 @@ public class WarehouseReceiptService {
         Set<WarehouseInvoice> warehouseInvoices = warehouseReceiptList
                 .stream()
                 .map(warehouseReceipt -> {
-                        WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
-                        warehouseInvoice.setWarehouseReceipt(warehouseReceipt);
-                        return warehouseInvoice;
+                    WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
+                    warehouseInvoice.setWarehouseReceipt(warehouseReceipt);
+                    return warehouseInvoice;
                 })
                 .collect(Collectors.toSet());
 
@@ -306,8 +379,8 @@ public class WarehouseReceiptService {
         return warehouseReceipts.size() + " رسید انبار با موفقیت وارد شد.";
     }
 
-    public List<WarehouseReceiptSelect> findAllWarehouseReceiptSelect(String searchQuery,Long yearId)  {
-        List<Object[]> results = warehouseReceiptRepository.searchWarehouseReceiptByDescriptionKeywords(searchQuery,yearId);
+    public List<WarehouseReceiptSelect> findAllWarehouseReceiptSelect(String searchQuery, Long yearId) {
+        List<Object[]> results = warehouseReceiptRepository.searchWarehouseReceiptByDescriptionKeywords(searchQuery, yearId);
         return results.stream().map(result -> {
 
             WarehouseReceiptSelect warehouseReceiptSelect = new WarehouseReceiptSelect();
@@ -327,8 +400,8 @@ public class WarehouseReceiptService {
     }
 
 
-
-    public byte[] exportWarehouseReceiptsToExcel(WarehouseReceiptSearch search, boolean exportAll) throws IllegalAccessException {
+    public byte[] exportWarehouseReceiptsToExcel(WarehouseReceiptSearch search, boolean exportAll) throws
+            IllegalAccessException {
         List<WarehouseReceiptDto> warehouseReceipts;
 
         if (exportAll) {
@@ -458,7 +531,8 @@ public class WarehouseReceiptService {
         return warehouseReceipts.stream().map(warehouseReceiptMapper::toDto).collect(Collectors.toList());
     }
 
-    private Page<WarehouseReceiptDto> findPage(int page, int size, String sortBy, String order, WarehouseReceiptSearch search) {
+    private Page<WarehouseReceiptDto> findPage(int page, int size, String sortBy, String
+            order, WarehouseReceiptSearch search) {
         var direction = "asc".equalsIgnoreCase(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
         var pageable = PageRequest.of(page, size, direction, sortBy);
         Specification<WarehouseReceipt> spec = WarehouseReceiptSpecification.bySearchCriteria(search);

@@ -14,6 +14,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -154,13 +155,6 @@ public class InvoiceService {
                 .setMaxResults(size)
                 .getResultList();
 
-        if (tuples.isEmpty()) {
-            // Log the issue if the list is empty
-            System.out.println("No results found for the given criteria.");
-        }
-
-        // Convert to DTO
-//        List<InvoiceDto> invoiceDtoList = convertToDtoList(tuples);
 
         // Convert tuple to DTO list explicitly
         List<InvoiceDto> invoiceDtoList = tuples.stream().map(tuple -> {
@@ -220,11 +214,10 @@ public class InvoiceService {
                 .setMaxResults(Integer.MAX_VALUE)
                 .getResultList();
 
-        List<InvoiceDto> overallDtoList = convertToDtoList(overall);
+        List<InvoiceDto> overallDtoList = getInvoiceDtoList(overall);
 
         Double overallTotalQuantity = calculateTotalQuantity(overallDtoList);
         Double overallTotalPrice = calculateTotalPrice(overallDtoList);
-        // Create a new CustomPageImpl with the overall totals
         CustomPageImpl<InvoiceDto> pageImpel = new CustomPageImpl<>(invoiceDtoList, pageRequest, getCount(invoiceSearch));
         pageImpel.setOverallTotalPrice(overallTotalPrice);
         pageImpel.setOverallTotalQuantity(overallTotalQuantity);
@@ -246,18 +239,46 @@ public class InvoiceService {
                 .mapToDouble(dto -> dto.getInvoiceItems().stream().mapToDouble(InvoiceItemDto::getQuantity).sum()).sum();
     }
 
-    private List<InvoiceDto> convertToDtoList(List<Tuple> tuples) {
-        TupleQueryHelper<InvoiceDto, Tuple> helper = new TupleQueryHelper<>(InvoiceDto.class);
-        List<InvoiceDto> invoiceDtoList = helper.convertToDtoList(tuples);
+    private @NotNull List<InvoiceDto> getInvoiceDtoList(List<Tuple> tuples) {
+        List<InvoiceDto> list = tuples.stream().map(tuple -> {
+            InvoiceDto invoiceDto = new InvoiceDto();
+            invoiceDto.setId(tuple.get("id", Long.class));
+            invoiceDto.setDueDate(tuple.get("dueDate", LocalDate.class));
+            invoiceDto.setInvoiceNumber(tuple.get("invoiceNumber", Long.class));
+            invoiceDto.setIssuedDate(tuple.get("issuedDate", LocalDate.class));
+            invoiceDto.setSalesType(tuple.get("salesType", SalesType.class));
+            invoiceDto.setContractId(tuple.get("contractId", Long.class));
+            invoiceDto.setContractNumber(tuple.get("contractNumber", String.class));
+            invoiceDto.setCustomerId(tuple.get("customerId", Long.class));
+            invoiceDto.setCustomerName(tuple.get("customerName", String.class));
+            invoiceDto.setInvoiceStatusId(tuple.get("invoiceStatusId", Integer.class));
+            invoiceDto.setAdvancedPayment(tuple.get("advancedPayment", Long.class));
+            invoiceDto.setInsuranceDeposit(tuple.get("insuranceDeposit", Long.class));
+            invoiceDto.setPerformanceBound(tuple.get("performanceBound", Long.class));
+            invoiceDto.setYearId(tuple.get("yearId", Long.class));
+            invoiceDto.setTotalQuantity(tuple.get("totalQuantity", Long.class));
+            invoiceDto.setTotalPrice(tuple.get("totalPrice", Double.class));
+            return invoiceDto;
+        }).toList();
 
-        invoiceDtoList.forEach(invoiceDto -> {
+        list.forEach(invoiceDto -> {
             Optional<Invoice> optionalInvoice = invoiceRepository.findById(invoiceDto.getId());
-            optionalInvoice.ifPresent(invoice -> invoiceDto
-                    .setInvoiceItems(invoice.getInvoiceItems().stream().map(invoiceItemMapper::toDto).collect(Collectors.toList()))
-            );
+            if (optionalInvoice.isPresent()) {
+                Invoice invoiceEntity = optionalInvoice.get();
+                invoiceDto.setInvoiceItems(invoiceEntity.getInvoiceItems().stream().map(item -> {
+                    InvoiceItemDto itemDto = new InvoiceItemDto();
+                    itemDto.setId(item.getId());
+                    itemDto.setQuantity(Long.valueOf(item.getQuantity()));
+                    itemDto.setUnitPrice(item.getUnitPrice());
+                    itemDto.setProductId(item.getProduct().getId());
+                    itemDto.setWarehouseReceiptId(item.getWarehouseReceiptId());
+                    return itemDto;
+                }).toList());
+            }
         });
-        return invoiceDtoList;
+        return list;
     }
+
 
 
     private Long getCount(InvoiceSearch invoiceSearch) {
@@ -306,29 +327,73 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceDto createInvoice(InvoiceDto invoiceDto) {
-
-
+        // تبدیل DTO به موجودیت با استفاده از mapper
         var invoiceEntity = invoiceMapper.toEntity(invoiceDto);
-        if (invoiceDto.getContractId() != null)
-            invoiceEntity.setContract(contractRepository.findById(invoiceDto.getContractId()).orElseThrow());
-        if (invoiceDto.getCustomerId() != null)
-            invoiceEntity.setCustomer(customerRepository.findById(invoiceDto.getCustomerId()).orElseThrow());
-        invoiceEntity.setYear(yearRepository.findByName(Long.valueOf(invoiceEntity.getJalaliYear())).orElseThrow());
-        if (invoiceDto.getInvoiceStatusId() != null)
-            invoiceEntity.setInvoiceStatus(invoiceStatusRepository.findById(invoiceDto.getInvoiceStatusId()).orElseThrow());
+
+        // تنظیم قرارداد اگر contractId داده شده باشد
+        if (invoiceDto.getContractId() != null) {
+            invoiceEntity.setContract(contractRepository.findById(invoiceDto.getContractId())
+                    .orElseThrow(() -> new IllegalStateException("قرارداد با شناسه " + invoiceDto.getContractId() + " پیدا نشد.")));
+        }
+
+        // تنظیم مشتری اگر customerId داده شده باشد
+        if (invoiceDto.getCustomerId() != null) {
+            invoiceEntity.setCustomer(customerRepository.findById(invoiceDto.getCustomerId())
+                    .orElseThrow(() -> new IllegalStateException("مشتری با شناسه " + invoiceDto.getCustomerId() + " پیدا نشد.")));
+        }
+
+        // تنظیم سال بر اساس JalaliYear از موجودیت
+        invoiceEntity.setYear(yearRepository.findByName(Long.valueOf(invoiceEntity.getJalaliYear()))
+                .orElseThrow(() -> new IllegalStateException("سال با نام " + invoiceEntity.getJalaliYear() + " پیدا نشد.")));
+
+        // تنظیم وضعیت فاکتور اگر invoiceStatusId داده شده باشد
+        if (invoiceDto.getInvoiceStatusId() != null) {
+            invoiceEntity.setInvoiceStatus(invoiceStatusRepository.findById(invoiceDto.getInvoiceStatusId())
+                    .orElseThrow(() -> new IllegalStateException("وضعیت فاکتور با شناسه " + invoiceDto.getInvoiceStatusId() + " پیدا نشد.")));
+        }
+
+        // اعتبارسنجی یکتایی فاکتور قبل از ادامه
         validateInvoiceUniqueness(invoiceDto);
+
+        // پردازش و تنظیم هر آیتم فاکتور
         invoiceEntity.getInvoiceItems().forEach(item -> {
-            Product product = productRepository.findById(item.getProductId()).orElseThrow(() -> new IllegalStateException("کالای مورد نظر پیدا نشد."));
+            // دریافت و تنظیم محصول برای هر آیتم
+            Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new IllegalStateException("کالا با شناسه " + item.getProductId() + " پیدا نشد."));
             item.setProduct(product);
-            WarehouseReceipt warehouseReceipt = warehouseReceiptRepository.findById(item.getWarehouseReceiptId()).orElseThrow(() -> new IllegalStateException("رسید انبار مورد نظر پیدا نشد."));
+
+            // دریافت و تنظیم رسید انبار برای هر آیتم
+            WarehouseReceipt warehouseReceipt = warehouseReceiptRepository.findById(item.getWarehouseReceiptId())
+                    .orElseThrow(() -> new IllegalStateException("رسید انبار با شناسه " + item.getWarehouseReceiptId() + " پیدا نشد."));
             item.setWarehouseReceipt(warehouseReceipt);
         });
+
+        // محاسبه مبلغ کل فاکتور
+        Double totalAmount = invoiceEntity.calculateTotalAmount();
+        invoiceEntity.setTotalAmount(totalAmount);
+
+        // محاسبه مالیات بر ارزش افزوده (VAT) و تنظیم فیلدهای مربوطه
+        VATRate vatRate = invoiceEntity.getVatRate();
+        if (vatRate != null) {
+            Double vatAmount = totalAmount * vatRate.getRate();
+            invoiceEntity.setVatAmount(vatAmount);
+            invoiceEntity.setTotalAmountWithVat(totalAmount + vatAmount);
+        } else {
+            invoiceEntity.setVatAmount(0.0);
+            invoiceEntity.setTotalAmountWithVat(totalAmount);
+        }
+
+        // ذخیره فاکتور و ایجاد رسید انبار
         var savedInvoice = invoiceRepository.save(invoiceEntity);
         WarehouseInvoice warehouseInvoice = new WarehouseInvoice();
         warehouseInvoice.setInvoice(savedInvoice);
         warehouseInvoiceRepository.save(warehouseInvoice);
+
+        // تبدیل موجودیت ذخیره شده به DTO و بازگرداندن آن
         return invoiceMapper.toDto(savedInvoice);
     }
+
+
 
     @Transactional
     public InvoiceDto updateInvoice(Long id, InvoiceDto invoiceDto) {

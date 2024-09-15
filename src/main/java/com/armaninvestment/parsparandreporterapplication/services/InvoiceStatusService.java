@@ -69,7 +69,7 @@ public class InvoiceStatusService {
         List<InvoiceStatusDto> invoiceStatusDtos = ExcelDataImporter.importData(file, InvoiceStatusDto.class);
         List<InvoiceStatus> invoiceStatuses = invoiceStatusDtos.stream().map(invoiceStatusMapper::toEntity).collect(Collectors.toList());
         invoiceStatusRepository.saveAll(invoiceStatuses);
-        return invoiceStatuses.size() + " invoice statuses have been imported successfully.";
+        return String.format("%s فاکتور با موفقیت بارگذاری شد..", invoiceStatuses.size());
     }
 
     public byte[] exportInvoiceStatusesToExcel() throws IOException {

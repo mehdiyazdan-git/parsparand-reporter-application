@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface VATRateRepository extends JpaRepository<VATRate, Long>, JpaSpecificationExecutor<VATRate> {
 
-  @Query("SELECT v FROM VATRate v WHERE v.effectiveFrom <= :date AND (v.effectiveTo IS NULL OR v.effectiveTo >= :date)")
+  @Query("SELECT v FROM VATRate v WHERE v.effectiveFrom <= :date")
   Optional<VATRate> findByEffectiveFromLessThanEqualAndEffectiveToGreaterThanEqual(@Param("date") LocalDate date);
 
 }

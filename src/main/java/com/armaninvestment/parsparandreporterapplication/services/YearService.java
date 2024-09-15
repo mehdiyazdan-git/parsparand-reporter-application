@@ -72,7 +72,7 @@ public class YearService {
     public void deleteYear(Long id) {
         Optional<Year> optionalYear = yearRepository.findById(id);
         if (optionalYear.isEmpty()) {
-            throw new EntityNotFoundException("سال با شناسه " + id + "یافت نشد.");
+            throw new EntityNotFoundException(String.format("سال با شناسه %S یافت نشد.", id));
         }
         Year year = optionalYear.get();
 
