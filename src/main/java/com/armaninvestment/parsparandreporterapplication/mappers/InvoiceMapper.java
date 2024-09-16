@@ -16,6 +16,7 @@ import java.util.Set;
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING,uses = {InvoiceItemMapper.class})
 public interface InvoiceMapper {
 
+    @Mapping(source = "vatRateId", target = "vatRate.id")
     @Mapping(source = "invoiceStatusId", target = "invoiceStatus.id")
     @Mapping(target = "jalaliYear", expression = "java(extractJalaliYear(invoiceDto.getIssuedDate()))")
     @Mapping(target = "month", expression = "java(extractMonth(invoiceDto.getIssuedDate()))")
@@ -25,6 +26,7 @@ public interface InvoiceMapper {
     @Mapping(source = "yearId", target = "year.id")
     Invoice toEntity(InvoiceDto invoiceDto);
 
+    @Mapping(source = "vatRate.id", target = "vatRateId")
     @Mapping(source = "year.id", target = "yearId")
     @Mapping(source = "invoiceStatus.id", target = "invoiceStatusId")
     @Mapping(source = "customer.id", target = "customerId")

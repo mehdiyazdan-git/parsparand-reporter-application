@@ -37,6 +37,10 @@ public class InvoiceDto implements Serializable {
     private Long insuranceDeposit;
     private Long performanceBound;
     private Long yearId;
+    private Long vatRateId;
+    private Double totalAmount;
+    private Double totalAmountWithVat;
+    private Double vatAmount;
     private Long totalQuantity;
     private Double totalPrice;
     private List<InvoiceItemDto> invoiceItems = new ArrayList<>();

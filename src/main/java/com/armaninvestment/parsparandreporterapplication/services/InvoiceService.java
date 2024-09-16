@@ -106,6 +106,11 @@ public class InvoiceService {
                 root.get("year").get("id").alias("yearId"),
                 root.get("year").get("name").alias("yearName"),
                 root.get("jalaliYear").alias("jalaliYear"),
+                root.get("vatRate").get("id").alias("vatRateId"),
+                root.get("vatAmount").alias("vatAmount"),
+                root.get("totalAmount").alias("totalAmount"),
+                root.get("totalAmountWithVat").alias("totalAmountWithVat"),
+
                 // aggregation columns
                 totalPrice.alias("totalPrice"),
                 totalQuantity.alias("totalQuantity")
@@ -132,7 +137,11 @@ public class InvoiceService {
                 root.get("invoiceStatus").get("id"),
                 root.get("year").get("id"),
                 root.get("year").get("name"),
-                root.get("jalaliYear")
+                root.get("jalaliYear"),
+                root.get("vatRate").get("id"),
+                root.get("vatAmount"),
+                root.get("totalAmount"),
+                root.get("totalAmountWithVat")
         );
         // This code dynamically sorts a JPA query, handling cases where the sort column (`searchForm.sortBy`) might not be
         // a direct attribute of the main entity. It uses a `switch` statement to apply specific sorting logic for
@@ -180,6 +189,10 @@ public class InvoiceService {
             invoiceDto.setInsuranceDeposit((Long) tuple.get("insuranceDeposit"));
             invoiceDto.setPerformanceBound((Long) tuple.get("performanceBound"));
             invoiceDto.setYearId((Long) tuple.get("yearId"));
+            invoiceDto.setVatRateId((Long) tuple.get("vatRateId"));
+            invoiceDto.setVatAmount((Double) tuple.get("vatAmount"));
+            invoiceDto.setTotalAmount((Double) tuple.get("totalAmount"));
+            invoiceDto.setTotalAmountWithVat((Double) tuple.get("totalAmountWithVat"));
 
             // Set totalQuantity and totalPrice directly from the query result
             invoiceDto.setTotalQuantity((Long) tuple.get("totalQuantity"));
@@ -256,6 +269,10 @@ public class InvoiceService {
             invoiceDto.setInsuranceDeposit(tuple.get("insuranceDeposit", Long.class));
             invoiceDto.setPerformanceBound(tuple.get("performanceBound", Long.class));
             invoiceDto.setYearId(tuple.get("yearId", Long.class));
+            invoiceDto.setVatRateId(tuple.get("vatRateId", Long.class)); // VatRate ID
+            invoiceDto.setTotalAmount(tuple.get("totalAmount", Double.class)); // Total Amount
+            invoiceDto.setTotalAmountWithVat(tuple.get("totalAmountWithVat", Double.class)); // Total Amount with VAT
+            invoiceDto.setVatAmount(tuple.get("vatAmount", Double.class)); // VAT Amount
             invoiceDto.setTotalQuantity(tuple.get("totalQuantity", Long.class));
             invoiceDto.setTotalPrice(tuple.get("totalPrice", Double.class));
             return invoiceDto;

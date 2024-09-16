@@ -19,4 +19,7 @@ public class ContractSelectDto implements Serializable {
     private Long id;
     @Size(max = 255)
     private String name;
+    private Double advancePayment;
+    private Double insuranceDeposit;
+    private Double performanceBond;
 }

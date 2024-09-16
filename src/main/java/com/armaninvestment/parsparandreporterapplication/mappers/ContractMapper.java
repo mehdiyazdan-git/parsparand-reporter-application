@@ -22,6 +22,9 @@ public interface ContractMapper {
     ContractDto toDto(Contract contract);
 
     @Mapping(source = "contractDescription", target = "name")
+    @Mapping(source = "advancePayment", target = "advancePayment")
+    @Mapping(source = "insuranceDeposit", target = "insuranceDeposit")
+    @Mapping(source = "performanceBond", target = "performanceBond")
     ContractSelectDto toSelectDto(Contract contract);
 
     @InheritConfiguration(name = "toEntity")
