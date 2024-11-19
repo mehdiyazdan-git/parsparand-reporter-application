@@ -1,5 +1,14 @@
 create function get_monthly_report_by_year_and_month(p_year integer, p_month integer, p_product_type integer)
-    returns TABLE(temp_customer_id bigint, temp_customer_name character varying, current_total_quantity bigint, current_total_amount bigint, cumulativetotalquantity bigint, cumulativetotalamount bigint, avg bigint)
+    returns TABLE
+            (
+                temp_customer_id        bigint,
+                temp_customer_name      character varying,
+                current_total_quantity  bigint,
+                current_total_amount    bigint,
+                cumulativetotalquantity bigint,
+                cumulativetotalamount   bigint,
+                avg                     bigint
+            )
     language plpgsql
 as
 $$
@@ -19,7 +28,8 @@ BEGIN
                          where r.month = p_month
                              and y.name = p_year
                              and c.big_customer = true
-                             and p_product_type is null or p_product_type = p.product_type
+                             and p_product_type is null
+                            or p_product_type = p.product_type
                          group by customer_name, c.id
 
                          union all
@@ -37,7 +47,8 @@ BEGIN
                          where r.month = p_month
                              and y.name = p_year
                              and c.big_customer = false
-                             and p_product_type is null or p_product_type = p.product_type
+                             and p_product_type is null
+                            or p_product_type = p.product_type
                          group by customer_name),
              cumulative as (select c.id                                          as customer_id,
                                    c.name                                        as customer_name,
@@ -68,7 +79,8 @@ BEGIN
                             where r.month <= p_month
                                 and y.name = p_year
                                 and c.big_customer = false
-                                and p_product_type is null or p_product_type = p.product_type
+                                and p_product_type is null
+                               or p_product_type = p.product_type
                             group by customer_name),
              customers as (select c.id, c.name
                            from customer c
